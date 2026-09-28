@@ -1,0 +1,157 @@
+from __future__ import annotations
+
+import argparse
+import logging
+import sys
+from pathlib import Path
+
+import pandas as pd
+import yaml
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "src"))
+
+from ser.analysis import append_results
+from ser.splits import PROTOCOLS, build_splits
+from ser.train import train_and_evaluate
+from ser.utils import ensure_dirs, get_device, seed_everything
+
+logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+LOGGER = logging.getLogger("run_experiments")
+
+MODEL_IDS = ["M0", "M1", "M2", "M3"]
+
+
+def _apply_cli_overrides(cfg: dict, args: argparse.Namespace) -> dict:
+    """Apply supported CLI hyperparameter overrides into the config dict."""
+    train = cfg.setdefault("train", {})
+    if args.batch_size is not None:
+        train["batch_size"] = int(args.batch_size)
+    if args.epochs is not None:
+        train["max_epochs"] = int(args.epochs)
+    if args.max_epochs is not None:
+        train["max_epochs"] = int(args.max_epochs)
+    if args.learning_rate is not None:
+        train["learning_rate"] = float(args.learning_rate)
+    if args.optimizer is not None:
+        train["optimizer"] = str(args.optimizer)
+    return cfg
+
+
+def _results_paths(cfg: dict) -> list[Path]:
+    """Primary results/results.csv plus configured results_dir mirror."""
+    paths = [ROOT / "results" / "results.csv"]
+    configured = ROOT / cfg["paths"]["results_dir"] / "results.csv"
+    if configured.resolve() != paths[0].resolve():
+        paths.append(configured)
+    return paths
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Run SER experiment matrix (M0–M3 × protocols × seeds).")
+    parser.add_argument("--config", default="config/config.yaml")
+    parser.add_argument("--protocol", choices=list(PROTOCOLS) + ["all"], default="all")
+    parser.add_argument("--models", nargs="+", choices=MODEL_IDS, default=MODEL_IDS)
+    parser.add_argument("--seeds", nargs="+", type=int, default=None)
+    parser.add_argument("--max-epochs", type=int, default=None, help="Alias for --epochs.")
+    parser.add_argument("--epochs", type=int, default=None)
+    parser.add_argument("--batch_size", type=int, default=None)
+    parser.add_argument("--learning_rate", type=float, default=None)
+    parser.add_argument("--optimizer", choices=["adam", "adamw"], default=None)
+    parser.add_argument(
+        "--gap-analysis",
+        action="store_true",
+        help="Run gap analysis automatically after experiments finish.",
+    )
+    args = parser.parse_args()
+
+    with (ROOT / args.config).open("r", encoding="utf-8") as f:
+        cfg = yaml.safe_load(f)
+    cfg = _apply_cli_overrides(cfg, args)
+
+    labels = cfg["labels"]
+    seeds = args.seeds if args.seeds is not None else [int(cfg.get("seed", 42))]
+    manifest_path = ROOT / cfg["paths"]["processed_manifest"]
+    df = pd.read_csv(manifest_path)
+    path_ok = ("path" in df.columns) or ("filepath" in df.columns)
+    required = {"dataset", "speaker", "emotion", "label", "feature_path"}
+    missing = required - set(df.columns)
+    if missing or not path_ok:
+        raise RuntimeError(
+            f"Manifest missing columns: {sorted(missing) if missing else ['path/filepath']}. "
+            "Run prepare_manifest.py then preprocess.py."
+        )
+
+    device = get_device()
+    print(f"Device: {device}")
+    protocols = list(PROTOCOLS) if args.protocol == "all" else [args.protocol]
+    result_paths = _results_paths(cfg)
+    for path in result_paths:
+        ensure_dirs(path.parent)
+
+    all_artifacts: list[dict] = []
+    total = 0
+    planned = 0
+    for seed in seeds:
+        for protocol in protocols:
+            split_list = build_splits(df, protocol=protocol, seed=seed)
+            planned += len(split_list) * len(args.models)
+
+    print(
+        f"Running {planned} jobs "
+        f"(protocols={protocols}, models={args.models}, seeds={seeds})"
+    )
+
+    for seed in seeds:
+        seed_everything(seed)
+        for protocol in protocols:
+            split_list = build_splits(df, protocol=protocol, seed=seed)
+            for item in split_list:
+                if isinstance(item, tuple):
+                    held_out, split = item
+                    extra_name = held_out
+                else:
+                    split = item
+                    extra_name = ""
+                for model_id in args.models:
+                    total += 1
+                    suffix = f"_{extra_name}" if extra_name else ""
+                    run_id = f"{protocol}{suffix}_{model_id}_seed{seed}".replace("-", "_")
+                    print(f"\n=== [{total}/{planned}] {run_id} ===")
+                    artifact = train_and_evaluate(
+                        cfg=cfg,
+                        model_id=model_id,
+                        split_name=split.name,
+                        train_df=split.train,
+                        val_df=split.val,
+                        test_df=split.test,
+                        labels=labels,
+                        seed=seed,
+                        run_id=run_id,
+                        device=device,
+                        max_epochs_override=args.epochs or args.max_epochs,
+                    )
+                    all_artifacts.append(artifact)
+                    for path in result_paths:
+                        append_results([artifact], path, labels=labels)
+
+    print(f"\nResults saved -> {result_paths[0]}")
+    for path in result_paths[1:]:
+        print(f"Results mirrored -> {path}")
+    print(f"Completed runs: {len(all_artifacts)}")
+
+    if args.gap_analysis and all_artifacts:
+        import runpy
+
+        sys.argv = [
+            str(ROOT / "scripts" / "gap_analysis.py"),
+            "--results",
+            str(result_paths[0].relative_to(ROOT)),
+            "--config",
+            args.config,
+        ]
+        runpy.run_path(str(ROOT / "scripts" / "gap_analysis.py"), run_name="__main__")
+
+
+if __name__ == "__main__":
+    main()

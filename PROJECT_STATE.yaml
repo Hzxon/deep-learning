@@ -1,0 +1,27 @@
+completed_stages:
+- ci_local
+- post_training_audit
+- pre_change_audit
+current_stage: pre-change
+next_stage: implementation
+blocked_conditions:
+- lint failed
+last_workflow: pre-change
+last_updated: '2026-09-28T15:37:43Z'
+last_result: FAIL
+stages:
+- environment_setup
+- dataset_preparation
+- manifest_generation
+- dataset_audit
+- feature_generation
+- feature_audit
+- split_generation
+- split_audit
+- smoke_test
+- pre_training_audit
+- training
+- post_training_audit
+- gap_analysis
+- report_generation
+- release

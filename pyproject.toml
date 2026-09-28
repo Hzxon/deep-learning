@@ -1,0 +1,32 @@
+[project]
+name = "ser-research"
+version = "0.1.0"
+description = "Speech Emotion Recognition generalization research framework"
+requires-python = ">=3.12"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+src = ["src", "scripts", "tests"]
+extend-exclude = [".venv", "data", "artifacts", "results", ".ci_fixtures", ".smoke_test", ".mplconfig", ".numba_cache"]
+
+[tool.ruff.lint]
+select = [
+  "E",  # pycodestyle errors
+  "F",  # pyflakes
+  "I",  # isort
+  "B",  # bugbear
+  "UP", # pyupgrade
+]
+ignore = [
+  "E501",  # line length handled by formatter preference; keep CI signal on real issues
+]
+
+[tool.ruff.lint.per-file-ignores]
+"scripts/*.py" = ["E402"]  # sys.path bootstrap before local imports
+"tests/*.py" = ["E402"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-q"

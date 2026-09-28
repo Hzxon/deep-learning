@@ -1,0 +1,22 @@
+---
+description: SER project specification is the single source of truth
+alwaysApply: true
+---
+
+# Project Specification Authority
+
+Cursor must always treat `docs/SER_PROJECT_SPEC.md` as the source of truth for research design, preprocessing, features, models, protocols, metrics, and Definition of Done.
+
+When code, configuration, README, AGENTS.md, or any other document disagrees with the specification, the specification wins and the other artifact must be corrected.
+
+## Hard constraints from the spec
+
+- Six emotion classes only: angry, disgust, fear, happy, neutral, sad.
+- Discard calm, surprise, pleasant_surprise.
+- Log-mel shape is exactly 64 × 188 (input tensor 1 × 64 × 188).
+- Protocols: random, speaker_independent, leave_one_corpus_out.
+- Models: M0–M3 (CNN ± aug × BiLSTM ± aug).
+- Never invent metrics, protocols, or architectures outside the spec.
+- No notebooks.
+
+Never implement anything contradicting the specification.

@@ -1,0 +1,62 @@
+---
+description: Mandatory pre- and post-training audit automation
+alwaysApply: true
+---
+
+# Training Workflow
+
+Training is forbidden until pre-training validation passes.
+
+## Automatic Pre-Training Workflow
+
+Run:
+
+```bash
+python scripts/workflow.py pre-training
+```
+
+Which executes:
+
+1. `validate_dataset.py`
+2. `validate_features.py`
+3. `validate_splits.py`
+4. `smoke_test.py`
+5. `reproducibility_check.py`
+
+Expected result:
+
+PASS PASS PASS PASS PASS
+
+If PASS:
+
+Generate `PRE_TRAINING_AUDIT.md`.
+
+Only then start training (`scripts/run_experiments.py`).
+
+## Automatic Post-Training Workflow
+
+Immediately after training:
+
+```bash
+python scripts/workflow.py post-training
+```
+
+Which runs:
+
+- `post_training_audit.py`
+- `audit_training.py`
+
+Generate:
+
+- `POST_TRAINING_AUDIT.md`
+- `training_health.json`
+- annotated training-curve PNGs
+
+Detect:
+
+- overfitting
+- underfitting
+- exploding gradients
+- vanishing gradients
+- unstable validation
+- checkpoint correctness

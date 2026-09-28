@@ -1,0 +1,40 @@
+---
+description: Validation gates must pass before work is complete
+alwaysApply: true
+---
+
+# Validation Gates
+
+No implementation is considered complete until every required validation gate passes.
+
+## Validation Gates
+
+Gate 1 — Dataset Integrity (`scripts/validate_dataset.py`)
+
+Gate 2 — Feature Integrity (`scripts/validate_features.py`)
+
+Gate 3 — Split Integrity (`scripts/validate_splits.py`)
+
+Gate 4 — Model Integrity (unit tests + smoke path)
+
+Gate 5 — Training Integrity (`scripts/smoke_test.py` + pre-training audit)
+
+Gate 6 — Evaluation Integrity (`scripts/check_artifacts.py`, metrics contracts)
+
+Gate 7 — Reproducibility (`scripts/reproducibility_check.py`)
+
+Gate 8 — Artifact Integrity (`scripts/check_artifacts.py`)
+
+If any gate fails:
+
+STOP.
+
+Explain the failure.
+
+Fix the implementation.
+
+Run validation again.
+
+Only continue after PASS.
+
+Use `python scripts/workflow.py pre-training` or `python scripts/workflow.py ci-local` to execute ordered gates.

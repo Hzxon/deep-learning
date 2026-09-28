@@ -1,0 +1,104 @@
+# Research OS workflow definitions.
+# Commands are executed from the repository root by scripts/workflow.py.
+# Do not duplicate step lists in Python — edit this file only.
+
+workflows:
+  pre-change:
+    description: Lint, unit tests, and artifact contract checks before code changes land.
+    completed_stage: pre_change_audit
+    current_stage: implementation
+    next_stage: validation
+    steps:
+      - name: ruff
+        command: "ruff check src scripts tests"
+        gate: lint
+      - name: pytest
+        command: "python -m pytest tests/ -q"
+        gate: tests
+      - name: check_artifacts
+        command: "python scripts/check_artifacts.py --config config/config.yaml"
+        gate: artifacts
+
+  pre-training:
+    description: Mandatory validation before any real training matrix.
+    completed_stage: pre_training_audit
+    current_stage: training
+    next_stage: post_training_audit
+    report: PRE_TRAINING_AUDIT.md
+    steps:
+      - name: validate_dataset
+        command: "python scripts/validate_dataset.py --config config/config.yaml"
+        gate: dataset
+      - name: validate_features
+        command: "python scripts/validate_features.py --config config/config.yaml"
+        gate: features
+      - name: validate_splits
+        command: "python scripts/validate_splits.py --config config/config.yaml --seed 42"
+        gate: splits
+      - name: smoke_test
+        command: "python scripts/smoke_test.py"
+        gate: smoke
+      - name: reproducibility_check
+        command: "python scripts/reproducibility_check.py --config config/config.yaml --seed 42"
+        gate: reproducibility
+      - name: pre_training_audit_report
+        command: "python scripts/pre_training_audit.py --config config/config.yaml --seed 42 --skip-nested"
+        gate: audit_report
+
+  post-training:
+    description: Health audit and curve generation after training.
+    completed_stage: post_training_audit
+    current_stage: gap_analysis
+    next_stage: report_generation
+    steps:
+      - name: post_training_audit
+        command: "python scripts/post_training_audit.py --config config/config.yaml"
+        gate: training_health
+      - name: audit_training
+        command: "python scripts/audit_training.py --config config/config.yaml"
+        gate: training_plots
+
+  ci-local:
+    description: Full local CI mirroring GitHub Actions validate.yml.
+    # Steps hardcode config/ci.yaml (same as .github/workflows/validate.yml).
+    completed_stage: ci_local
+    current_stage: release_ready
+    next_stage: release
+    steps:
+      - name: ruff
+        command: "ruff check src scripts tests"
+        gate: lint
+      - name: pytest
+        command: "python -m pytest tests/ -q"
+        gate: tests
+      - name: prepare_ci_fixtures
+        command: "python scripts/prepare_ci_fixtures.py --config config/ci.yaml"
+        gate: fixtures
+      - name: validate_dataset
+        command: "python scripts/validate_dataset.py --config config/ci.yaml --allow-missing-audio"
+        gate: dataset
+      - name: validate_features
+        command: "python scripts/validate_features.py --config config/ci.yaml"
+        gate: features
+      - name: validate_splits
+        command: "python scripts/validate_splits.py --config config/ci.yaml --seed 42"
+        gate: splits
+      - name: smoke_test
+        command: "python scripts/smoke_test.py"
+        gate: smoke
+      - name: check_artifacts
+        command: "python scripts/check_artifacts.py --config config/ci.yaml --require-manifest"
+        gate: artifacts
+
+  release:
+    description: Release gate — local CI plus documentation and Research OS integrity.
+    completed_stage: release
+    current_stage: done
+    next_stage: none
+    steps:
+      - name: ci_local
+        command: "python scripts/workflow.py ci-local"
+        gate: ci
+      - name: check_artifacts
+        command: "python scripts/check_artifacts.py --config config/config.yaml"
+        gate: artifacts

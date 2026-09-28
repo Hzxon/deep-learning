@@ -1,0 +1,40 @@
+---
+description: Local and GitHub CI must pass for major changes
+alwaysApply: true
+---
+
+# CI Policy
+
+Every major change must pass CI locally before completion.
+
+## Local CI
+
+```bash
+python scripts/workflow.py ci-local
+# or
+.cursor/commands/ci_local.sh
+```
+
+## CI stages
+
+Order matches `.github/workflows/validate.yml` and `scripts/workflows.yaml` `ci-local`:
+
+1. Ruff
+2. Pytest
+3. Prepare CI fixtures
+4. Dataset Validation
+5. Feature Validation
+6. Split Validation
+7. Smoke Test
+8. Artifact Validation
+
+Cursor must never declare work complete if CI fails.
+
+GitHub Actions:
+
+- `.github/workflows/validate.yml` — PR / push gate
+- `.github/workflows/nightly-audit.yml` — scheduled validation + report artifacts
+
+Failure policy: fail immediately; do not use `continue-on-error` on validation steps.
+
+Merge policy: no merge to main/master while `validate.yml` is red.

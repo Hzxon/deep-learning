@@ -1,0 +1,96 @@
+---
+description: Research OS workflow dispatcher — always apply
+alwaysApply: true
+---
+
+# Research OS
+
+This repository is workflow-driven.
+
+Cursor MUST execute workflows automatically depending on the user's request.
+
+Never jump directly into implementation or training.
+
+## Workflow Dispatcher
+
+User request categories trigger mandatory workflows.
+
+### Category A — Code Change
+
+Examples:
+
+- implement model
+- refactor trainer
+- modify preprocessing
+- change augmentation
+- change metrics
+
+Automatically execute:
+
+1. Pre-Change Audit (`python scripts/workflow.py pre-change`).
+2. Inspect affected files.
+3. Explain implementation plan.
+4. Apply code changes.
+5. Run Validation Gate (`python scripts/workflow.py ci-local` for major changes).
+6. Update `IMPLEMENTATION_AUDIT.md`.
+
+### Category B — Dataset Change
+
+Automatically execute:
+
+- Dataset audit (`scripts/validate_dataset.py`).
+- Manifest audit (`scripts/inspect_manifest.py`).
+- Feature audit (`scripts/validate_features.py`).
+- Split regeneration if necessary (`scripts/make_splits.py`).
+- Split leakage audit (`scripts/validate_splits.py`).
+
+### Category C — Before Training
+
+Automatically execute:
+
+1. Pre-training audit (`python scripts/workflow.py pre-training`).
+2. Validate dataset.
+3. Validate features.
+4. Validate splits.
+5. Smoke test.
+6. Reproducibility audit.
+7. Abort training if any gate fails.
+
+### Category D — After Training
+
+Automatically execute:
+
+1. Post-training audit (`python scripts/workflow.py post-training`).
+2. Overfitting detection.
+3. Underfitting detection.
+4. Metrics audit.
+5. Confusion matrix audit.
+6. Update `POST_TRAINING_AUDIT.md`.
+
+### Category E — Release / Merge
+
+Automatically execute:
+
+- CI locally (`python scripts/workflow.py ci-local`).
+- All tests.
+- Validation report.
+- Artifact verification.
+- Update `CHANGELOG.md` when releasing.
+
+Never skip workflows.
+
+## Source of truth
+
+- Spec: `docs/SER_PROJECT_SPEC.md` (single canonical copy — do not fork or mirror this file elsewhere).
+- Validation: `docs/VALIDATION_PROTOCOL.md`.
+- Operations: `docs/WORKFLOW_GUIDE.md`.
+- CI: `docs/CI_SPEC.md`.
+- Structure map: `docs/PROJECT_STRUCTURE.md` (where every file/folder lives and why).
+- State: `PROJECT_STATE.yaml` (updated by `scripts/workflow.py`).
+
+## Anti-duplication rule
+
+Every concept in this repository has exactly one canonical file. Before creating a new
+Markdown file, script, or config, check `docs/PROJECT_STRUCTURE.md` for an existing owner.
+Never copy a document's full contents into a second location "for legacy paths" — link to
+the canonical file instead.

@@ -1,0 +1,103 @@
+{
+  "runs": [
+    {
+      "run_id": "random_M0_seed42",
+      "flags": {
+        "overfitting": false,
+        "underfitting": false,
+        "exploding_gradients": false,
+        "vanishing_gradients": false,
+        "learning_plateau": false,
+        "checkpoint_incorrect": false
+      },
+      "notes": [],
+      "best_epoch_history": 36,
+      "best_epoch_metrics": 36,
+      "n_epochs": 40,
+      "passed": true
+    },
+    {
+      "run_id": "random_M1_seed42",
+      "flags": {
+        "overfitting": false,
+        "underfitting": false,
+        "exploding_gradients": false,
+        "vanishing_gradients": false,
+        "learning_plateau": false,
+        "checkpoint_incorrect": false
+      },
+      "notes": [],
+      "best_epoch_history": 36,
+      "best_epoch_metrics": 36,
+      "n_epochs": 40,
+      "passed": true
+    },
+    {
+      "run_id": "random_M2_seed42",
+      "flags": {
+        "overfitting": true,
+        "underfitting": false,
+        "exploding_gradients": false,
+        "vanishing_gradients": false,
+        "learning_plateau": false,
+        "checkpoint_incorrect": false
+      },
+      "notes": [
+        "train/val UAR gap=0.187"
+      ],
+      "best_epoch_history": 26,
+      "best_epoch_metrics": 26,
+      "n_epochs": 34,
+      "passed": true
+    },
+    {
+      "run_id": "smoke_M0",
+      "flags": {
+        "overfitting": false,
+        "underfitting": false,
+        "exploding_gradients": false,
+        "vanishing_gradients": false,
+        "learning_plateau": false,
+        "checkpoint_incorrect": false
+      },
+      "notes": [],
+      "best_epoch_history": 1,
+      "best_epoch_metrics": 1,
+      "n_epochs": 1,
+      "passed": true
+    },
+    {
+      "run_id": "speaker_independent_M0_seed42",
+      "flags": {
+        "overfitting": false,
+        "underfitting": false,
+        "exploding_gradients": false,
+        "vanishing_gradients": false,
+        "learning_plateau": false,
+        "checkpoint_incorrect": false
+      },
+      "notes": [],
+      "best_epoch_history": 1,
+      "best_epoch_metrics": 1,
+      "n_epochs": 2,
+      "passed": true
+    },
+    {
+      "run_id": "trainer_framework_check",
+      "flags": {
+        "overfitting": false,
+        "underfitting": false,
+        "exploding_gradients": false,
+        "vanishing_gradients": false,
+        "learning_plateau": false,
+        "checkpoint_incorrect": false
+      },
+      "notes": [],
+      "best_epoch_history": 1,
+      "best_epoch_metrics": 1,
+      "n_epochs": 1,
+      "passed": true
+    }
+  ],
+  "overall_passed": true
+}

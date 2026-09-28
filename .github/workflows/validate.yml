@@ -1,0 +1,66 @@
+name: Validate
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+concurrency:
+  group: validate-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Fail immediately when any step exits non-zero. Do not add continue-on-error.
+jobs:
+  validate:
+    name: Lint, test, validate, smoke, artifacts
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Ruff
+        run: ruff check src scripts tests
+
+      - name: Pytest
+        env:
+          MPLCONFIGDIR: ${{ github.workspace }}/.mplconfig
+        run: |
+          mkdir -p "$MPLCONFIGDIR"
+          python -m pytest tests/ -q
+
+      - name: Prepare CI fixtures
+        run: python scripts/prepare_ci_fixtures.py --config config/ci.yaml
+
+      - name: Dataset Validation
+        run: python scripts/validate_dataset.py --config config/ci.yaml --allow-missing-audio
+
+      - name: Feature Validation
+        run: python scripts/validate_features.py --config config/ci.yaml
+
+      - name: Split Validation
+        run: python scripts/validate_splits.py --config config/ci.yaml --seed 42
+
+      - name: Smoke Test
+        env:
+          MPLCONFIGDIR: ${{ github.workspace }}/.mplconfig
+        run: |
+          mkdir -p "$MPLCONFIGDIR"
+          python scripts/smoke_test.py
+
+      - name: Artifact Validation
+        run: python scripts/check_artifacts.py --config config/ci.yaml --require-manifest

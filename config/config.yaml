@@ -1,0 +1,88 @@
+seed: 42
+
+labels:
+  - angry
+  - disgust
+  - fear
+  - happy
+  - neutral
+  - sad
+
+sample_rate: 16000
+duration_seconds: 3.0
+
+mel:
+  n_fft: 512
+  win_length: 512
+  hop_length: 256
+  n_mels: 64
+  fmin: 20
+  fmax: 8000
+  power: 2.0
+  target_frames: 188
+
+train:
+  batch_size: 32
+  num_workers: 0
+  max_epochs: 40
+  patience: 8
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  grad_clip_norm: 5.0
+  optimizer: adamw  # adam | adamw
+  use_class_weights: true
+  mixed_precision: true
+  monitor_metric: val_uar
+  tensorboard: true
+  scheduler:
+    name: reduce_on_plateau  # reduce_on_plateau | cosine | step | none
+    mode: max
+    factor: 0.5
+    patience: 2
+    min_lr: 1.0e-6
+    step_size: 10
+    gamma: 0.1
+    t_max: null
+
+augmentation:
+  time_shift_p: 0.25
+  time_shift_max: 12
+  random_gain_p: 0.30
+  random_gain_db: 6.0
+  noise_p: 0.35
+  noise_std: 0.03
+  pitch_shift_p: 0.25
+  pitch_shift_max: 2
+  time_stretch_p: 0.25
+  time_stretch_range: [0.9, 1.1]
+  spec_augment_p: 0.35
+  time_mask_p: 0.35
+  time_mask_max: 24
+  freq_mask_p: 0.35
+  freq_mask_max: 8
+  n_time_masks: 1
+  n_freq_masks: 1
+
+model:
+  in_channels: 1
+  channels: [32, 64, 128]
+  dropout: 0.3
+  lstm_hidden: 128
+  lstm_layers: 1
+  n_mels: 64
+  n_frames: 188
+
+paths:
+  ravdess: "data/raw/ravdess"
+  cremad: "data/raw/cremad"
+  tess: "data/raw/tess"
+  savee: "data/raw/savee"
+  processed_manifest: "data/processed/manifest.csv"
+  features_dir: "data/processed/features"
+  splits_dir: "data/splits"
+  results_dir: "results"
+  checkpoints_dir: "artifacts/checkpoints"
+  plots_dir: "artifacts/plots"
+  reports_dir: "artifacts/reports"
+  outputs_dir: "artifacts/runs"
+  tensorboard_dir: "artifacts/tensorboard"
