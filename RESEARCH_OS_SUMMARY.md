@@ -103,7 +103,7 @@ Ruff → Pytest → Artifact contract check → update `PROJECT_STATE.yaml`.
 
 ### Before training → `pre-training`
 
-Dataset → Features → Splits → Smoke → Reproducibility → `PRE_TRAINING_AUDIT.md`.
+Dataset → Features → Splits (seeds **42, 43, 44**) → Smoke → Reproducibility → `PRE_TRAINING_AUDIT.md`.
 
 **Training is forbidden until this PASSes.**
 

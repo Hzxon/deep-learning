@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import sys
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 import yaml
@@ -47,6 +49,29 @@ def _results_paths(cfg: dict) -> list[Path]:
     return paths
 
 
+def _outputs_dir(cfg: dict) -> Path:
+    return ROOT / cfg["paths"].get("outputs_dir", cfg["paths"]["results_dir"])
+
+
+def _load_existing_artifact(run_dir: Path) -> dict[str, Any] | None:
+    """Return a loadable metrics.json artifact, or None if missing/invalid."""
+    metrics_path = run_dir / "metrics.json"
+    if not metrics_path.exists():
+        return None
+    try:
+        artifact = json.loads(metrics_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        LOGGER.warning("Could not load %s: %s", metrics_path, exc)
+        return None
+    if not isinstance(artifact, dict) or "run_id" not in artifact:
+        LOGGER.warning("Invalid artifact shape in %s", metrics_path)
+        return None
+    if "test_metrics" not in artifact:
+        LOGGER.warning("Incomplete artifact (no test_metrics) in %s", metrics_path)
+        return None
+    return artifact
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run SER experiment matrix (M0–M3 × protocols × seeds).")
     parser.add_argument("--config", default="config/config.yaml")
@@ -58,6 +83,11 @@ def main() -> None:
     parser.add_argument("--batch_size", type=int, default=None)
     parser.add_argument("--learning_rate", type=float, default=None)
     parser.add_argument("--optimizer", choices=["adam", "adamw"], default=None)
+    parser.add_argument(
+        "--skip-existing",
+        action="store_true",
+        help="Skip jobs whose artifacts/runs/<run_id>/metrics.json already exists; upsert into results.csv.",
+    )
     parser.add_argument(
         "--gap-analysis",
         action="store_true",
@@ -86,10 +116,12 @@ def main() -> None:
     print(f"Device: {device}")
     protocols = list(PROTOCOLS) if args.protocol == "all" else [args.protocol]
     result_paths = _results_paths(cfg)
+    outputs_dir = _outputs_dir(cfg)
     for path in result_paths:
         ensure_dirs(path.parent)
 
     all_artifacts: list[dict] = []
+    skipped = 0
     total = 0
     planned = 0
     for seed in seeds:
@@ -99,7 +131,7 @@ def main() -> None:
 
     print(
         f"Running {planned} jobs "
-        f"(protocols={protocols}, models={args.models}, seeds={seeds})"
+        f"(protocols={protocols}, models={args.models}, seeds={seeds}, skip_existing={args.skip_existing})"
     )
 
     for seed in seeds:
@@ -118,6 +150,18 @@ def main() -> None:
                     suffix = f"_{extra_name}" if extra_name else ""
                     run_id = f"{protocol}{suffix}_{model_id}_seed{seed}".replace("-", "_")
                     print(f"\n=== [{total}/{planned}] {run_id} ===")
+
+                    if args.skip_existing:
+                        existing = _load_existing_artifact(outputs_dir / run_id)
+                        if existing is not None:
+                            print(f"SKIP existing metrics.json -> {outputs_dir / run_id / 'metrics.json'}")
+                            artifact = existing
+                            skipped += 1
+                            all_artifacts.append(artifact)
+                            for path in result_paths:
+                                append_results([artifact], path, labels=labels)
+                            continue
+
                     artifact = train_and_evaluate(
                         cfg=cfg,
                         model_id=model_id,
@@ -138,7 +182,7 @@ def main() -> None:
     print(f"\nResults saved -> {result_paths[0]}")
     for path in result_paths[1:]:
         print(f"Results mirrored -> {path}")
-    print(f"Completed runs: {len(all_artifacts)}")
+    print(f"Completed runs: {len(all_artifacts)} (skipped existing: {skipped})")
 
     if args.gap_analysis and all_artifacts:
         import runpy

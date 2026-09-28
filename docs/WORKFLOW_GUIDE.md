@@ -18,7 +18,7 @@ Optional Unix wrappers (macOS / Linux / Git Bash / WSL only):
 .cursor/commands/ci_local.sh
 ```
 
-State file: [`../PROJECT_STATE.yaml`](../PROJECT_STATE.yaml)
+State file: `[../PROJECT_STATE.yaml](../PROJECT_STATE.yaml)`
 
 ---
 
@@ -26,33 +26,72 @@ State file: [`../PROJECT_STATE.yaml`](../PROJECT_STATE.yaml)
 
 Use this checklist on a new machine. Details for each stage follow below.
 
-| Step | What | Command / action |
-| --- | --- | --- |
-| 0 | Clone + Python 3.12 venv + deps | See **Stage 0** (OS-specific) |
-| 1 | Download 4 corpora into `data/raw/` | See **Stage 1** |
-| 2 | Manifest | `python scripts/prepare_manifest.py --config config/config.yaml` |
-| 3 | Dataset gate | `python scripts/validate_dataset.py --config config/config.yaml` |
-| 4 | Features | `python scripts/preprocess.py --config config/config.yaml` |
-| 5 | Feature gate | `python scripts/validate_features.py --config config/config.yaml` |
-| 6 | Splits | `python scripts/make_splits.py --config config/config.yaml --seed 42` |
-| 7 | Split gate | `python scripts/validate_splits.py --config config/config.yaml --seed 42` |
-| 8 | Smoke | `python scripts/smoke_test.py` |
-| 9 | Pre-training audit (**required**) | `python scripts/workflow.py pre-training` |
-| 10 | Train | See **Stage 10** (start small, then full matrix) |
-| 11 | Post-training audit | `python scripts/workflow.py post-training` |
-| 12 | Gap analysis (RQ1–RQ3) | `python scripts/gap_analysis.py --config config/config.yaml` |
-| 13 | Report + release check | `python scripts/make_report.py --config config/config.yaml` |
+| Step | What                                | Command / action                                                          |
+| ---- | ----------------------------------- | ------------------------------------------------------------------------- |
+| 0    | Clone + Python 3.12 venv + deps     | See **Stage 0** (OS-specific)                                             |
+| 1    | Download 4 corpora into `data/raw/` | See **Stage 1**                                                           |
+| 2    | Manifest                            | `python scripts/prepare_manifest.py --config config/config.yaml`          |
+| 3    | Dataset gate                        | `python scripts/validate_dataset.py --config config/config.yaml`          |
+| 4    | Features                            | `python scripts/preprocess.py --config config/config.yaml`                |
+| 5    | Feature gate                        | `python scripts/validate_features.py --config config/config.yaml`         |
+| 6    | Splits (seeds 42, 43, 44)           | See **Stage 6**                                                           |
+| 7    | Split gate (all three seeds)        | See **Stage 7**                                                           |
+| 8    | Smoke                               | `python scripts/smoke_test.py`                                            |
+| 9    | Pre-training audit (**required**)   | `python scripts/workflow.py pre-training`                                 |
+| 10   | Train                               | See **Stage 10** / **Training handoff**                                   |
+| 11   | Post-training audit                 | `python scripts/workflow.py post-training`                                |
+| 12   | Gap analysis (RQ1–RQ3)              | `python scripts/gap_analysis.py --config config/config.yaml`              |
+| 13   | Report + release check              | `python scripts/make_report.py --config config/config.yaml`               |
 
 **Hard rule:** do not start real training until `python scripts/workflow.py pre-training` prints `PASS`.
 
+### Training handoff (Stages 10–13)
+
+Use this when the repo is already prepared (manifest, features, splits for seeds 42/43/44, and `PRE_TRAINING_AUDIT.md` PASS). The teammate who owns the full matrix starts here.
+
+1. Confirm `PRE_TRAINING_AUDIT.md` exists and overall status is **PASS**.
+2. Confirm device with a short probe:
+
+```bash
+python scripts/run_experiments.py --config config/config.yaml \
+  --protocol speaker_independent --models M0 --seeds 42 --max-epochs 2
+```
+
+Expect `Device: mps`, `Device: cuda`, or `Device: cpu` in the log. Delete that short probe run under `artifacts/runs/` before the full matrix if you do not want it mixed with production outputs.
+
+3. Full research matrix (72 jobs — overnight+ on GPU):
+
+```bash
+python scripts/run_experiments.py --config config/config.yaml \
+  --protocol all --models M0 M1 M2 M3 --seeds 42 43 44
+```
+
+If interrupted, resume without retraining completed cells:
+
+```bash
+python scripts/run_experiments.py --config config/config.yaml \
+  --protocol all --models M0 M1 M2 M3 --seeds 42 43 44 --skip-existing
+```
+
+4. After the matrix finishes:
+
+```bash
+python scripts/workflow.py post-training
+python scripts/gap_analysis.py --config config/config.yaml
+python scripts/make_report.py --config config/config.yaml
+python scripts/workflow.py release
+```
+
+5. Definition of Done (see `docs/SER_PROJECT_SPEC.md` §14): `results/results.csv` has **72 real rows only** (no demo/smoke/tiny `train_size`), RQ CSV + Markdown tables, PNG figures, hypotheses marked.
+
 **Disk / time ballpark (production):**
 
-| Resource | Approx. |
-| --- | --- |
-| Raw audio (`data/raw/`) | ~2 GB |
-| Log-mel features (`data/processed/`) | ~0.5 GB |
+| Resource                                                         | Approx.                              |
+| ---------------------------------------------------------------- | ------------------------------------ |
+| Raw audio (`data/raw/`)                                          | ~2 GB                                |
+| Log-mel features (`data/processed/`)                             | ~0.5 GB                              |
 | Full matrix `3 protocols × M0–M3 × 3 seeds` (72 jobs, 40 epochs) | many hours → ~1 day depending on GPU |
-| Apple MPS / CUDA GPU | strongly preferred over CPU |
+| Apple MPS / CUDA GPU                                             | strongly preferred over CPU          |
 
 ---
 
@@ -166,12 +205,12 @@ All `scripts/*.py` entry points add `src/` to `sys.path` automatically — run t
 
 **Troubleshooting.**
 
-| Symptom | Fix |
-| --- | --- |
-| `torch.cuda.is_available() == False` on NVIDIA PC | Install CUDA-enabled PyTorch from pytorch.org; update GPU driver |
-| `soundfile` / `libsndfile` errors on Windows | Install [Microsoft VC++ Redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist); or use WSL2 |
-| `python` not found | Use `py -3.12` (Windows) or `python3.12` (Unix) |
-| Bash wrappers fail on Windows | Use `python scripts/workflow.py ...` instead of `.cursor/commands/*.sh` |
+| Symptom                                           | Fix                                                                                                                             |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `torch.cuda.is_available() == False` on NVIDIA PC | Install CUDA-enabled PyTorch from pytorch.org; update GPU driver                                                                |
+| `soundfile` / `libsndfile` errors on Windows      | Install [Microsoft VC++ Redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist); or use WSL2 |
+| `python` not found                                | Use `py -3.12` (Windows) or `python3.12` (Unix)                                                                                 |
+| Bash wrappers fail on Windows                     | Use `python scripts/workflow.py ...` instead of `.cursor/commands/*.sh`                                                         |
 
 ---
 
@@ -191,12 +230,12 @@ data/raw/
 
 Official sources (download + extract yourself; not shipped in git):
 
-| Corpus | Typical source |
-| --- | --- |
-| RAVDESS | [Zenodo record 1188976](https://zenodo.org/records/1188976) (speech actors) |
-| CREMA-D | [CREMA-D GitHub / project page](https://github.com/CheyneyComputerScience/CREMA-D) |
-| TESS | University of Toronto TSpace / commonly mirrored datasets |
-| SAVEE | [SAVEE project page](http://kahlan.eps.surrey.ac.uk/savee/) (registration may be required) |
+| Corpus  | Typical source                                                                             |
+| ------- | ------------------------------------------------------------------------------------------ |
+| RAVDESS | [Zenodo record 1188976](https://zenodo.org/records/1188976) (speech actors)                |
+| CREMA-D | [CREMA-D GitHub / project page](https://github.com/CheyneyComputerScience/CREMA-D)         |
+| TESS    | University of Toronto TSpace / commonly mirrored datasets                                  |
+| SAVEE   | [SAVEE project page](http://kahlan.eps.surrey.ac.uk/savee/) (registration may be required) |
 
 Folder names must match config keys (`cremad`, `ravdess`, `tess`, `savee`). Internal layout can vary; scanners find `.wav` recursively and parse standard filenames.
 
@@ -248,13 +287,13 @@ python scripts/validate_dataset.py --config config/config.yaml
 
 **Expected.** `DATASET VALIDATION PASSED` · `VALIDATION_REPORT.md` · `artifacts/reports/validation_dataset.json`
 
-**Troubleshooting.** See [`VALIDATION_PROTOCOL.md`](VALIDATION_PROTOCOL.md) Gate 1.
+**Troubleshooting.** See `[VALIDATION_PROTOCOL.md](VALIDATION_PROTOCOL.md)` Gate 1.
 
 ---
 
 ## Stage 4 — Feature Generation
 
-**Purpose.** Extract log-mel features shaped **`(64, 188)`** (input tensor `1 × 64 × 188`).
+**Purpose.** Extract log-mel features shaped `(64, 188)` (input tensor `1 × 64 × 188`).
 
 ```bash
 python scripts/preprocess.py --config config/config.yaml
@@ -280,25 +319,29 @@ python scripts/validate_features.py --config config/config.yaml
 
 ## Stage 6 — Split Generation
 
-**Purpose.** Export Protocols A / B / C.
+**Purpose.** Export Protocols A / B / C for every experiment seed.
 
 ```bash
 python scripts/make_splits.py --config config/config.yaml --seed 42
+python scripts/make_splits.py --config config/config.yaml --seed 43
+python scripts/make_splits.py --config config/config.yaml --seed 44
 ```
 
-**Expected files.** `data/splits/*_seed42/` (random, speaker_independent, four LOCO folds).
+**Expected files.** `data/splits/*_seed42/`, `*_seed43/`, `*_seed44/` (random, speaker_independent, four LOCO folds each).
 
 ---
 
 ## Stage 7 — Split Audit
 
-**Purpose.** Gate 3 (no speaker leakage on B; no corpus leakage on C).
+**Purpose.** Gate 3 (no speaker leakage on B; no corpus leakage on C) for every seed.
 
 ```bash
 python scripts/validate_splits.py --config config/config.yaml --seed 42
+python scripts/validate_splits.py --config config/config.yaml --seed 43
+python scripts/validate_splits.py --config config/config.yaml --seed 44
 ```
 
-**Expected.** `SPLIT VALIDATION PASSED`
+**Expected.** `SPLIT VALIDATION PASSED` for each seed. The `pre-training` workflow validates all three seeds.
 
 ---
 
@@ -367,6 +410,17 @@ python scripts/run_experiments.py \
 
 Optional: append `--gap-analysis` to run gap analysis after the matrix finishes.
 
+**Resume after interrupt** (skip cells that already have `artifacts/runs/<run_id>/metrics.json`):
+
+```bash
+python scripts/run_experiments.py \
+  --config config/config.yaml \
+  --protocol all \
+  --models M0 M1 M2 M3 \
+  --seeds 42 43 44 \
+  --skip-existing
+```
+
 **Expected files.** `artifacts/runs/<run_id>/{config.yaml,history.csv,best_model.pt,metrics.json,report.txt,...}` and rows under `results/`.
 
 **Checklist.**
@@ -375,7 +429,7 @@ Optional: append `--gap-analysis` to run gap analysis after the matrix finishes.
 - [ ] Confirmed `Device: cuda` (Windows GPU) or `Device: mps` / `cpu` in log
 - [ ] Seeds logged
 
-**Troubleshooting.** If interrupted, re-run only missing `(protocol, model, seed[, fold])` combinations — do not delete healthy completed runs unless intentionally restarting.
+**Troubleshooting.** Prefer `--skip-existing` when resuming. Do not delete healthy completed runs unless intentionally restarting from scratch. Never commit synthetic or fixture-sized rows into `results/results.csv` (Gate 8 rejects `demo_`/`smoke_`/`trainer_framework_check` run ids and `train_size < 1000`).
 
 **Windows tip.** Keep the laptop plugged in; avoid sleep. In PowerShell you can use:
 
@@ -455,10 +509,10 @@ python scripts/make_report.py --config config/config.yaml
 
 ## Related docs
 
-| Doc | Role |
-| --- | --- |
-| [`SER_PROJECT_SPEC.md`](SER_PROJECT_SPEC.md) | Research / model / metric contract |
-| [`VALIDATION_PROTOCOL.md`](VALIDATION_PROTOCOL.md) | Gate recovery |
-| [`CI_SPEC.md`](CI_SPEC.md) | CI architecture |
-| [`PROJECT_STRUCTURE.md`](PROJECT_STRUCTURE.md) | Where every file lives |
-| [`../README.md`](../README.md) | Human entry point |
+| Doc                                                | Role                               |
+| -------------------------------------------------- | ---------------------------------- |
+| `[SER_PROJECT_SPEC.md](SER_PROJECT_SPEC.md)`       | Research / model / metric contract |
+| `[VALIDATION_PROTOCOL.md](VALIDATION_PROTOCOL.md)` | Gate recovery                      |
+| `[CI_SPEC.md](CI_SPEC.md)`                         | CI architecture                    |
+| `[PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md)`     | Where every file lives             |
+| `[../README.md](../README.md)`                     | Human entry point                  |

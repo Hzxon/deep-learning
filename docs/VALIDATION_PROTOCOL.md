@@ -125,7 +125,11 @@ Speaker or corpus leakage inflates scores and falsifies RQ1/RQ2.
 
 ```bash
 python scripts/validate_splits.py --config config/config.yaml --seed 42
+python scripts/validate_splits.py --config config/config.yaml --seed 43
+python scripts/validate_splits.py --config config/config.yaml --seed 44
 ```
+
+The `pre-training` workflow validates all three seeds (42, 43, 44).
 
 ### Expected output
 
@@ -141,7 +145,11 @@ Speaker overlap (B/C), corpus leakage (C), failed integrity assertions, or broke
 
 ```bash
 python scripts/make_splits.py --config config/config.yaml --seed 42
+python scripts/make_splits.py --config config/config.yaml --seed 43
+python scripts/make_splits.py --config config/config.yaml --seed 44
 python scripts/validate_splits.py --config config/config.yaml --seed 42
+python scripts/validate_splits.py --config config/config.yaml --seed 43
+python scripts/validate_splits.py --config config/config.yaml --seed 44
 ```
 
 ---

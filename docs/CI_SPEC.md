@@ -31,7 +31,7 @@ Stages (fail immediately on first non-zero exit):
 1. Checkout
 2. Python 3.12 + pip cache
 3. Install `requirements.txt`
-4. Ruff (`ruff check src scripts tests`)
+4. Ruff (`python -m ruff check src scripts tests`)
 5. Pytest
 6. Prepare CI fixtures (`scripts/prepare_ci_fixtures.py --config config/ci.yaml`)
 7. Dataset validation (`--allow-missing-audio` only if fixtures omit WAVs; prefer real tiny WAVs)
@@ -50,7 +50,7 @@ Runs validation-oriented steps and uploads Markdown/JSON reports as workflow art
 
 | Gate | Local command | CI stage |
 |---|---|---|
-| Lint | `ruff check ...` | Ruff |
+| Lint | `python -m ruff check ...` | Ruff |
 | Tests | `pytest` | Pytest |
 | Dataset | `validate_dataset.py` | Dataset Validation |
 | Features | `validate_features.py` | Feature Validation |

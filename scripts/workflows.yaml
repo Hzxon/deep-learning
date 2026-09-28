@@ -10,7 +10,7 @@ workflows:
     next_stage: validation
     steps:
       - name: ruff
-        command: "ruff check src scripts tests"
+        command: "python -m ruff check src scripts tests"
         gate: lint
       - name: pytest
         command: "python -m pytest tests/ -q"
@@ -32,9 +32,15 @@ workflows:
       - name: validate_features
         command: "python scripts/validate_features.py --config config/config.yaml"
         gate: features
-      - name: validate_splits
+      - name: validate_splits_seed42
         command: "python scripts/validate_splits.py --config config/config.yaml --seed 42"
-        gate: splits
+        gate: splits_42
+      - name: validate_splits_seed43
+        command: "python scripts/validate_splits.py --config config/config.yaml --seed 43"
+        gate: splits_43
+      - name: validate_splits_seed44
+        command: "python scripts/validate_splits.py --config config/config.yaml --seed 44"
+        gate: splits_44
       - name: smoke_test
         command: "python scripts/smoke_test.py"
         gate: smoke
@@ -66,7 +72,7 @@ workflows:
     next_stage: release
     steps:
       - name: ruff
-        command: "ruff check src scripts tests"
+        command: "python -m ruff check src scripts tests"
         gate: lint
       - name: pytest
         command: "python -m pytest tests/ -q"

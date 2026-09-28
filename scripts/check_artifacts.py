@@ -157,17 +157,38 @@ def check_manifest_and_features(cfg: dict, *, require_present: bool) -> None:
     print(f"OK manifest/features: rows={len(df)} shape_checks={len(sample)}")
 
 
+# Minimum train_size for a production experiment row. CI/demo fixtures use ~100.
+PRODUCTION_MIN_TRAIN_SIZE = 1000
+FORBIDDEN_RUN_ID_SUBSTRINGS = ("demo_", "smoke_", "trainer_framework_check")
+
+
 def check_results_csv() -> None:
     path = ROOT / "results" / "results.csv"
     if not path.exists():
         print("SKIP results/results.csv (not present)")
         return
     df = normalize_results_frame(pd.read_csv(path))
+    if df.empty:
+        _fail("results.csv exists but contains zero rows")
     missing = [c for c in RESULT_COLUMNS if c not in df.columns]
     if missing:
         _fail(f"results.csv missing columns: {missing}")
-    if "run_id" in df.columns and df["run_id"].astype(str).str.contains("demo_", na=False).any():
-        _fail("results.csv contains synthetic demo_ run_id rows")
+    if "run_id" in df.columns:
+        run_ids = df["run_id"].astype(str)
+        for needle in FORBIDDEN_RUN_ID_SUBSTRINGS:
+            if run_ids.str.contains(needle, na=False).any():
+                _fail(f"results.csv contains forbidden synthetic run_id substring: {needle!r}")
+    if "train_size" in df.columns:
+        sizes = pd.to_numeric(df["train_size"], errors="coerce")
+        if sizes.isna().any():
+            _fail("results.csv has non-numeric train_size")
+        bad = sizes < PRODUCTION_MIN_TRAIN_SIZE
+        if bool(bad.any()):
+            examples = df.loc[bad, "run_id"].astype(str).head(5).tolist() if "run_id" in df.columns else []
+            _fail(
+                f"results.csv has train_size < {PRODUCTION_MIN_TRAIN_SIZE} "
+                f"(synthetic/fixture-sized rows); examples={examples}"
+            )
     if df[["accuracy", "uar", "macro_f1"]].isna().any().any():
         _fail("results.csv contains NaN metrics")
     for col in ("accuracy", "uar", "macro_f1"):

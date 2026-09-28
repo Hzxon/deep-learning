@@ -1,30 +1,36 @@
 # Implementation Audit
 
 **Date:** 2026-09-28  
-**Category:** A — Documentation (collaborator onboarding)  
-**Trigger:** Teammate clone / Windows+CUDA full-pipeline guide  
+**Category:** A — Training handoff readiness (Option A)  
+**Trigger:** Purge synthetic research outputs; harden gates; multi-seed splits; teammate Stage 10 handoff  
 
 ## Summary
 
-Did **not** create a new Markdown guide (anti-duplication). Expanded the
-canonical owner `docs/WORKFLOW_GUIDE.md` with cross-OS onboarding (clone →
-venv → CUDA/MPS → datasets → gates → train → gap analysis → report) and
-pointed `README.md` at that file.
+Prepared the repository for a teammate to own the full 72-run matrix. Fixed PATH-fragile lint invocation, removed polluted `results/` and stub runs, hardened Gate 8 against fixture-sized rows, generated/validated splits for seeds 42/43/44, added `--skip-existing` resume support, and documented the Training handoff checklist.
 
 ## Changes
 
 | Area | Action |
 |---|---|
-| `docs/WORKFLOW_GUIDE.md` | Collaborator quickstart; Windows PowerShell/CMD; CUDA wheel notes; dataset sources; runtime ballpark; one-shot command sequence |
-| `README.md` | Collaborator section + short install for Windows; fixed outdated run-from-zero / results paths |
-| `docs/PROJECT_STRUCTURE.md` | Clarify WORKFLOW_GUIDE owns collaborator onboarding |
+| `scripts/workflows.yaml` | `python -m ruff`; pre-training validates splits for seeds 42, 43, 44 |
+| `.github/workflows/validate.yml` | `python -m ruff check ...` |
+| `scripts/check_artifacts.py` | Reject empty results, forbidden run_id substrings, `train_size < 1000` |
+| `scripts/run_experiments.py` | `--skip-existing` loads `metrics.json` and upserts into `results.csv` |
+| `docs/WORKFLOW_GUIDE.md` | Training handoff + multi-seed splits + resume flag |
+| `docs/CI_SPEC.md` / `docs/VALIDATION_PROTOCOL.md` | Align ruff and multi-seed split docs |
+| `results/*` | Deleted polluted CSV/RQ/gap tables (left absent) |
+| `artifacts/runs/` | Removed demo/smoke/incomplete/short SI probe; kept full `random_M0/M1/M2_seed42` |
+| Root | Removed stale `POST_TRAINING_AUDIT.md` / `training_health.json` |
 
 ## Validation
 
-- Docs-only change; no ML contract change
-- Pre-change workflow may need venv `PATH` for `ruff` on local shells
+- `python scripts/workflow.py pre-change` — PASS (with `.venv` active)
+- Splits generated + validated for seeds 42, 43, 44 — PASS
+- `python scripts/workflow.py pre-training` — PASS → `PRE_TRAINING_AUDIT.md`
+- `python scripts/workflow.py ci-local` — PASS
 
 ## Recommendations
 
-1. Keep a single onboarding doc: `docs/WORKFLOW_GUIDE.md` — do not add `COLLABORATOR.md` / `SETUP.md` forks
-2. Teammates on NVIDIA should verify `torch.cuda.is_available()` before the full 72-job matrix
+1. Teammate starts at **Training handoff** in `docs/WORKFLOW_GUIDE.md` (full matrix, then post-training → gap → report → release).
+2. Use `--skip-existing` when resuming an interrupted matrix.
+3. Do not reintroduce synthetic rows into `results/results.csv`; Gate 8 will fail CI/local artifact checks.

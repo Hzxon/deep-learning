@@ -34,7 +34,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Ruff
-        run: ruff check src scripts tests
+        run: python -m ruff check src scripts tests
 
       - name: Pytest
         env:

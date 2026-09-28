@@ -60,7 +60,7 @@ ser_research_full/
 └── .github/workflows/    # validate.yml (PR gate), nightly-audit.yml
 ```
 
-Full map with ownership per file: **[`docs/PROJECT_STRUCTURE.md`](docs/PROJECT_STRUCTURE.md)**.
+Full map with ownership per file: `**[docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md)**`.
 
 ## Research Operating System
 
@@ -73,11 +73,11 @@ python scripts/workflow.py post-training   # after training
 python scripts/workflow.py ci-local        # local CI / PR readiness
 ```
 
-Docs: [`docs/SER_PROJECT_SPEC.md`](docs/SER_PROJECT_SPEC.md) · [`docs/WORKFLOW_GUIDE.md`](docs/WORKFLOW_GUIDE.md) · [`docs/VALIDATION_PROTOCOL.md`](docs/VALIDATION_PROTOCOL.md) · [`RESEARCH_OS_SUMMARY.md`](RESEARCH_OS_SUMMARY.md)
+Docs: `[docs/SER_PROJECT_SPEC.md](docs/SER_PROJECT_SPEC.md)` · `[docs/WORKFLOW_GUIDE.md](docs/WORKFLOW_GUIDE.md)` · `[docs/VALIDATION_PROTOCOL.md](docs/VALIDATION_PROTOCOL.md)` · `[RESEARCH_OS_SUMMARY.md](RESEARCH_OS_SUMMARY.md)`
 
 ## Collaborators: run from zero (macOS / Linux / Windows + CUDA)
 
-**Canonical full playbook:** [`docs/WORKFLOW_GUIDE.md`](docs/WORKFLOW_GUIDE.md)
+**Canonical full playbook:** `[docs/WORKFLOW_GUIDE.md](docs/WORKFLOW_GUIDE.md)`
 
 That guide covers clone → venv → CUDA/MPS install → dataset download layout →
 validation gates → training → gap analysis → report, including Windows PowerShell
@@ -118,11 +118,11 @@ data/raw/
 └── savee/
 ```
 
-The scanner recursively searches each root for `.wav` files and parses the standard filenames/folder names used by these corpora. Sources and checks: [`docs/WORKFLOW_GUIDE.md`](docs/WORKFLOW_GUIDE.md) Stage 1.
+The scanner recursively searches each root for `.wav` files and parses the standard filenames/folder names used by these corpora. Sources and checks: `[docs/WORKFLOW_GUIDE.md](docs/WORKFLOW_GUIDE.md)` Stage 1.
 
 ## Run from zero (summary)
 
-Prefer the staged checklist in [`docs/WORKFLOW_GUIDE.md`](docs/WORKFLOW_GUIDE.md). Condensed:
+Prefer the staged checklist in `[docs/WORKFLOW_GUIDE.md](docs/WORKFLOW_GUIDE.md)`. Condensed:
 
 ```bash
 python scripts/prepare_manifest.py --config config/config.yaml
@@ -152,7 +152,7 @@ Outputs: per-run folders under `artifacts/runs/`; research tables under `results
 
 ## Data caveat: TESS
 
-TESS has only two speakers. A strict three-way speaker-disjoint split *inside TESS alone* is therefore not meaningful. The implementation therefore uses pooled speaker grouping for protocol B and the held-out-corpus design for protocol C. This limitation should be stated explicitly in a paper.
+TESS has only two speakers. A strict three-way speaker-disjoint split _inside TESS alone_ is therefore not meaningful. The implementation therefore uses pooled speaker grouping for protocol B and the held-out-corpus design for protocol C. This limitation should be stated explicitly in a paper.
 
 ## Literature motivation
 
@@ -160,7 +160,7 @@ A 2023 systematic review identifies speaker-independent experiments as an import
 
 Useful starting references:
 
-- Akçay & Oğuz, *Speech emotion recognition using machine learning — A systematic review* (2023), DOI: 10.1016/j.iswa.2023.200266.
+- Akçay & Oğuz, _Speech emotion recognition using machine learning — A systematic review_ (2023), DOI: 10.1016/j.iswa.2023.200266.
 - Recent multi-corpus CNN work using RAVDESS, TESS, SAVEE and CREMA-D (Scientific Reports, 2026).
 - Recent speaker-independent multi-dataset CNN/LSTM work (2026).
 
