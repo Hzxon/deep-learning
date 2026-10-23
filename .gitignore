@@ -52,3 +52,6 @@ dist/
 .vscode/
 *.swp
 *~
+
+# testgate hidden tests (checked out in CI only)
+.testgate-hidden/
