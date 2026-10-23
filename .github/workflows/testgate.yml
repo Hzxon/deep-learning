@@ -42,8 +42,19 @@ jobs:
           pip install torch --index-url https://download.pytorch.org/whl/cpu
           pip install -r requirements.txt
 
+      # testgate lives in the private repo Hzxon/test-entity, which a public repo
+      # cannot reference with `uses:`. Check it out with a read-only deploy key
+      # (secret TESTGATE_ACTION_SSH_KEY) and run it as a local action.
+      - name: Check out testgate
+        uses: actions/checkout@v4
+        with:
+          repository: Hzxon/test-entity
+          ref: v0
+          ssh-key: ${{ secrets.TESTGATE_ACTION_SSH_KEY }}
+          path: .testgate-action
+
       - name: Run testgate
-        uses: Hzxon/test-entity@v0
+        uses: ./.testgate-action
         with:
           base: origin/${{ github.base_ref }}
           hidden-dir: ${{ github.workspace }}/.testgate-hidden

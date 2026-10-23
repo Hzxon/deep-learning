@@ -55,3 +55,4 @@ dist/
 
 # testgate hidden tests (checked out in CI only)
 .testgate-hidden/
+.testgate-action/
