@@ -1,0 +1,60 @@
+# testgate configuration. This file is read from the base ref (for example
+# origin/main), so a change cannot loosen the gates it is judged by.
+version: 1  # schema version; only 1 exists
+
+# Language adapter: python (default), js, or http (needs an `http:` section; see docs/adr/0002).
+# language: python
+
+# Source directory copied into the sandbox, relative to the repo root.
+package: src/ser
+# Top-level module the build gate imports.
+import_name: ser
+
+tests:
+  # Protected, visible tests. Authors cannot change them (see `protected`).
+  golden: tests/golden
+  # Tests the author may add. They count for coverage, never as mutant kills.
+  auto: tests/auto
+  # Optional local path to hidden tests kept outside the repo.
+  # hidden: ../hidden-tests
+  # Environment variable naming the hidden test directory when `hidden` is unset.
+  hidden_env: TESTGATE_HIDDEN_DIR
+
+# Paths that must match the base ref exactly. Any difference fails the run.
+protected:
+  - tests/golden
+  - testgate.yaml
+  - .github/workflows
+
+# Environment variable holding the secret Hypothesis seed.
+seed_env: TESTGATE_SEED
+
+# Each gate is true/false, or a mapping with `enabled` plus options.
+gates:
+  protected: true  # protected paths equal the base ref
+  hygiene: true  # no test-detection tricks, no conftest in tests/auto
+  build: true  # package imports and compiles
+  tests:
+    enabled: true
+    repeats: 2  # runs for the flaky check (>= 1); ratchet: raise to 5 once CI time allows
+  hidden:
+    enabled: true
+    required: true  # fail, rather than skip, when no hidden tests are available
+  coverage:
+    enabled: true
+    min_total: 0.0  # minimum total line coverage, 0..1
+    min_changed: 0.5  # minimum coverage of changed lines, 0..1; ratchet: raise toward 0.9
+    max_drop: 0.02  # allowed drop of total coverage vs the base ref, 0..1; ratchet: lower to 0.0
+  mutation:
+    enabled: true
+    min_score: 0.5  # killed / generated, 0..1; ratchet: raise toward 0.8
+    max_mutants: 10  # sampled with the seed when more lines are eligible; each mutant imports torch
+    max_shown: 7  # surviving mutants listed per file
+    timeout_s: 60  # per mutant run; a timeout counts as killed
+    auto_useless_blocks: false  # true: FAIL when an auto test file kills no mutant golden+hidden missed
+    # jobs: 4  # mutant runs in flight at once; default is half the CPUs
+
+sandbox:
+  network: false  # block sockets inside test runs
+  timeout_s: 600  # per pytest invocation
+  python: null  # interpreter for the sandbox; null uses the one running testgate

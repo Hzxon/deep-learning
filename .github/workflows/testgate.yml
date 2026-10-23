@@ -1,0 +1,59 @@
+name: testgate
+
+on:
+  pull_request:
+
+jobs:
+  testgate:
+    runs-on: ubuntu-latest
+    env:
+      # secrets cannot be used in step-level `if`, so expose one through env
+      HIDDEN_REPO: ${{ secrets.TESTGATE_HIDDEN_REPO }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # The hidden tests live in a private repository the PR author cannot read.
+      # Give CI a read-only deploy key for it: `ssh-keygen -t ed25519 -f key`,
+      # add key.pub as a deploy key on that repo, store key in the secret
+      # TESTGATE_HIDDEN_SSH_KEY, and set TESTGATE_HIDDEN_REPO to owner/name.
+      - name: Check out hidden tests
+        if: env.HIDDEN_REPO != ''
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.HIDDEN_REPO }}
+          ref: main  # set explicitly: resolving the default branch needs API access the token lacks
+          ssh-key: ${{ secrets.TESTGATE_HIDDEN_SSH_KEY }}
+          path: .testgate-hidden
+
+      # The sandbox runs tests with the interpreter that runs testgate, so the
+      # project's dependencies must be installed into the same Python 3.12 the
+      # action sets up. CPU-only torch keeps the install small.
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install project dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements.txt
+
+      - name: Run testgate
+        uses: Hzxon/test-entity@v0
+        with:
+          base: origin/${{ github.base_ref }}
+          hidden-dir: ${{ github.workspace }}/.testgate-hidden
+        env:
+          TESTGATE_SEED: ${{ secrets.TESTGATE_SEED }}
+
+      - name: Upload private log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: testgate-private-log
+          path: testgate-private.log
+          if-no-files-found: ignore
