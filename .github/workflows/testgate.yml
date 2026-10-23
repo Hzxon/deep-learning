@@ -3,16 +3,27 @@ name: testgate
 on:
   pull_request:
 
+# Least privilege for GITHUB_TOKEN: the gate only reads the repo.
+permissions:
+  contents: read
+
 jobs:
   testgate:
     runs-on: ubuntu-latest
+    # Secrets live in the `testgate` environment, which needs a reviewer's
+    # approval per run. A PR that edits this file cannot read them unapproved.
+    environment: testgate
     env:
       # secrets cannot be used in step-level `if`, so expose one through env
       HIDDEN_REPO: ${{ secrets.TESTGATE_HIDDEN_REPO }}
     steps:
-      - uses: actions/checkout@v4
+      # Actions are pinned to full commit SHAs so a moved tag cannot change CI.
+      # persist-credentials: false keeps tokens and keys off disk, where the
+      # tests under judgement could read them.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       # The hidden tests live in a private repository the PR author cannot read.
       # Give CI a read-only deploy key for it: `ssh-keygen -t ed25519 -f key`,
@@ -20,8 +31,9 @@ jobs:
       # TESTGATE_HIDDEN_SSH_KEY, and set TESTGATE_HIDDEN_REPO to owner/name.
       - name: Check out hidden tests
         if: env.HIDDEN_REPO != ''
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
         with:
+          persist-credentials: false
           repository: ${{ env.HIDDEN_REPO }}
           ref: main  # set explicitly: resolving the default branch needs API access the token lacks
           ssh-key: ${{ secrets.TESTGATE_HIDDEN_SSH_KEY }}
@@ -31,7 +43,7 @@ jobs:
       # project's dependencies must be installed into the same Python 3.12 the
       # action sets up. CPU-only torch keeps the install small.
       - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
         with:
           python-version: "3.12"
           cache: pip
@@ -46,10 +58,11 @@ jobs:
       # cannot reference with `uses:`. Check it out with a read-only deploy key
       # (secret TESTGATE_ACTION_SSH_KEY) and run it as a local action.
       - name: Check out testgate
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
         with:
+          persist-credentials: false
           repository: Hzxon/test-entity
-          ref: v0
+          ref: 74a0509128c3b63d5c8c116f57efb8fc508c0f28  # origin/main 2026-10-24; tag v0 lacks gates.coverage.max_drop
           ssh-key: ${{ secrets.TESTGATE_ACTION_SSH_KEY }}
           path: .testgate-action
 
@@ -63,7 +76,7 @@ jobs:
 
       - name: Upload private log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
         with:
           name: testgate-private-log
           path: testgate-private.log
