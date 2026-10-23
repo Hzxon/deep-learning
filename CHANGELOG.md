@@ -18,3 +18,5 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - Per-run outputs live under `artifacts/runs/` (`paths.outputs_dir`); research
   tables remain in `results/`; Research-OS audit reports in `artifacts/reports/`.
+
+<!-- testgate smoke check -->
