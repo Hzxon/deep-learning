@@ -28,6 +28,7 @@ from ser.audit import (  # noqa: E402
     GateResult,
     exit_code,
     render_gate_report,
+    save_json,
     save_markdown,
     update_project_state,
     utc_now,
@@ -104,16 +105,18 @@ def execute_workflow(name: str, workflows: dict[str, Any]) -> int:
 
     report_name = spec.get("report")
     if report_name:
-        # Dedicated pre_training_audit.py writes the canonical report; only
-        # emit a workflow-level fallback when the nested report step was skipped.
-        report_path = ROOT / str(report_name)
-        if not report_path.exists() or not overall:
-            md = render_gate_report(
-                title="Pre-Training Audit" if name == "pre-training" else f"Workflow: {name}",
-                workflow=name,
-                gates=results,
-            )
-            save_markdown(md, report_path)
+        # The report always reflects the gates this run actually executed.
+        md = render_gate_report(
+            title="Pre-Training Audit" if name == "pre-training" else f"Workflow: {name}",
+            workflow=name,
+            gates=results,
+            recommendations=spec.get("recommendations_pass" if overall else "recommendations_fail"),
+        )
+        save_markdown(md, ROOT / str(report_name))
+        save_json(
+            {"overall": overall, "gates": [r.to_dict() for r in results]},
+            ROOT / "artifacts" / "reports" / f"{Path(str(report_name)).stem.lower()}.json",
+        )
 
     summary_path = ROOT / "artifacts" / "reports" / f"workflow_{name.replace('-', '_')}.md"
     save_markdown(

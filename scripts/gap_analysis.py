@@ -6,7 +6,6 @@ import sys
 from pathlib import Path
 
 import pandas as pd
-import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -18,6 +17,7 @@ from ser.analysis import (
     normalize_results_frame,
     write_rq_markdown_report,
 )
+from ser.audit import load_config  # noqa: E402
 from ser.plotting import generate_all_result_plots
 from ser.utils import ensure_dirs
 
@@ -36,7 +36,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    cfg = yaml.safe_load((ROOT / args.config).read_text(encoding="utf-8"))
+    cfg = load_config(args.config)
     results_path = Path(args.results)
     if not results_path.is_absolute():
         results_path = ROOT / results_path

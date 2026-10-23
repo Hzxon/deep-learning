@@ -18,7 +18,7 @@ You are the senior reviewer for the SER research codebase.
 python scripts/workflow.py ci-local
 ```
 
-6. Update `IMPLEMENTATION_AUDIT.md` with timestamp, files changed, gate results, and recommendations.
+6. Add an entry to `CHANGELOG.md` with files changed, gate results, and recommendations.
 
 ## Checklist
 

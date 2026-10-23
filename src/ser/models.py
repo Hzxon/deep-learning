@@ -155,12 +155,6 @@ class CNNBiLSTMClassifier(nn.Module):
         return logits
 
 
-# Backward-compatible aliases used by older imports / docs.
-CNNEncoder = CNNBackbone
-CNN_SER = CNNClassifier
-CNN_BiLSTM_SER = CNNBiLSTMClassifier
-
-
 def assert_input_shape(
     x: torch.Tensor,
     *,

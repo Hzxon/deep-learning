@@ -63,12 +63,10 @@ python scripts/workflow.py list
 | `validate_features.py` | Gate 2 Features |
 | `validate_splits.py` | Gate 3 Splits |
 | `reproducibility_check.py` | Gate 7 Reproducibility |
-| `pre_training_audit.py` | Aggregate pre-training report |
 | `post_training_audit.py` | Training health / `POST_TRAINING_AUDIT.md` |
 | `audit_training.py` | Annotated training-curve PNGs |
 | `check_artifacts.py` | Gate 8 Artifacts (extended) |
 | `smoke_test.py` | Gate 5 Smoke (existing) |
-| `validate_pipeline.py` | Legacy combined validator (kept) |
 
 Shared helpers live in `src/ser/audit.py`.
 
@@ -170,7 +168,7 @@ Read next:
 
 - No new CNN / CNN-BiLSTM implementations were added in this task.
 - Training logic was not redesigned; only automation hooks and audits were added.
-- Existing scripts were retained (`validate_pipeline.py`, `smoke_test.py`, etc.).
+- Existing scripts were retained (`smoke_test.py`, etc.). `workflow.py pre-training` writes `PRE_TRAINING_AUDIT.md` from the gates it actually ran.
 
 ## 2026-09-28 reorganization pass
 
@@ -191,4 +189,4 @@ installation prompts:
 - Added [`docs/PROJECT_STRUCTURE.md`](docs/PROJECT_STRUCTURE.md) as the single map of
   "what lives where and why," including which files are hand-authored vs. auto-generated.
 
-See [`IMPLEMENTATION_AUDIT.md`](IMPLEMENTATION_AUDIT.md) for the audit trail of this pass.
+See `CHANGELOG.md` for the change history.

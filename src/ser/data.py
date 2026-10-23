@@ -14,6 +14,7 @@ import torch
 from torch.utils.data import Dataset
 
 from .features import FEATURE_SHAPE, ComposeAugmentations, build_augmentations
+from .splits import path_column
 
 LOGGER = logging.getLogger(__name__)
 
@@ -288,7 +289,7 @@ def attach_feature_paths(df: pd.DataFrame, features_dir: str | Path) -> pd.DataF
     """Attach deterministic feature paths under ``features/{dataset}/{sha1}.npy``."""
     features_dir = Path(features_dir)
     features_dir.mkdir(parents=True, exist_ok=True)
-    path_col = "filepath" if "filepath" in df.columns else "path"
+    path_col = path_column(df)
     feature_paths: list[str] = []
     for raw_path, dataset in zip(df[path_col].tolist(), df["dataset"].tolist(), strict=True):
         digest = hashlib.sha1(str(raw_path).encode("utf-8")).hexdigest()
@@ -358,3 +359,18 @@ class SERDataset(Dataset):
         x = (x - self.mean) / self.std
         y = torch.tensor(int(row["label"]), dtype=torch.long)
         return x, y
+
+
+def seed_augmentation_worker(worker_id: int) -> None:
+    """DataLoader ``worker_init_fn`` giving each worker its own augmentation stream.
+
+    Without it every worker inherits a copy of the same RNG, so all workers draw
+    identical augmentations and the stream restarts each epoch. ``worker_info.seed``
+    differs per worker and per epoch and derives from the loader's seeded generator.
+    """
+    info = torch.utils.data.get_worker_info()
+    if info is None:
+        return
+    dataset = info.dataset
+    if isinstance(dataset, SERDataset) and dataset.transforms is not None:
+        dataset.transforms.reseed(info.seed)

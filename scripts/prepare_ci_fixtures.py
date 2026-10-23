@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-"""Prepare lightweight synthetic fixtures so CI can run validate_pipeline without raw audio."""
+"""Prepare lightweight synthetic fixtures so CI can run the validate_* gates without raw audio."""
 
 import argparse
 import sys
@@ -8,11 +8,11 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
+from ser.audit import load_config  # noqa: E402
 from ser.data import LABEL_TO_ID  # noqa: E402
 from ser.utils import ensure_dirs  # noqa: E402
 
@@ -63,7 +63,7 @@ def main() -> None:
     parser.add_argument("--config", default="config/ci.yaml")
     args = parser.parse_args()
 
-    cfg = yaml.safe_load((ROOT / args.config).read_text(encoding="utf-8"))
+    cfg = load_config(args.config)
     features_dir = ROOT / cfg["paths"]["features_dir"]
     manifest_path = ROOT / cfg["paths"]["processed_manifest"]
     ensure_dirs(features_dir, manifest_path.parent)
