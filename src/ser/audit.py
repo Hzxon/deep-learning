@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import subprocess
 import sys
 from dataclasses import asdict, dataclass, field
@@ -11,6 +10,8 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+
+from .utils import save_json as _save_json
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -35,6 +36,7 @@ class GateResult:
     message: str = ""
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialise the gate and its checks for JSON reports."""
         return {
             "gate": self.gate,
             "passed": self.passed,
@@ -49,29 +51,29 @@ def utc_now() -> str:
 
 
 def project_root() -> Path:
+    """Return the repository root."""
     return ROOT
 
 
+def from_root(path: str | Path) -> Path:
+    """Resolve a path relative to the repository root; absolute paths pass through."""
+    path = Path(path)
+    return path if path.is_absolute() else ROOT / path
+
+
 def load_config(config_path: str | Path) -> dict[str, Any]:
-    path = Path(config_path)
-    if not path.is_absolute():
-        path = ROOT / path
-    return yaml.safe_load(path.read_text(encoding="utf-8"))
+    """Load a YAML config, resolving relative paths against the repository root."""
+    return yaml.safe_load(from_root(config_path).read_text(encoding="utf-8"))
 
 
 def save_json(data: Any, path: str | Path) -> Path:
-    path = Path(path)
-    if not path.is_absolute():
-        path = ROOT / path
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    return path
+    """Write JSON to ``path``, resolved against the repository root."""
+    return _save_json(data, from_root(path))
 
 
 def save_markdown(text: str, path: str | Path) -> Path:
-    path = Path(path)
-    if not path.is_absolute():
-        path = ROOT / path
+    """Write Markdown to ``path``, resolved against the repository root."""
+    path = from_root(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text.rstrip() + "\n", encoding="utf-8")
     return path
@@ -79,7 +81,6 @@ def save_markdown(text: str, path: str | Path) -> Path:
 
 def repo_state_summary() -> dict[str, Any]:
     """Collect lightweight repository state for audit headers."""
-    git_head = "unknown"
     try:
         git_head = (
             subprocess.check_output(
@@ -164,7 +165,19 @@ def render_gate_report(
     return "\n".join(lines)
 
 
+def discover_runs(outputs_dir: Path) -> list[Path]:
+    """Return completed run directories (with ``history.csv``), skipping ``demo_*`` stubs."""
+    if not outputs_dir.exists():
+        return []
+    return [
+        child
+        for child in sorted(outputs_dir.iterdir())
+        if child.is_dir() and (child / "history.csv").exists() and not child.name.startswith("demo_")
+    ]
+
+
 def load_project_state(path: Path | None = None) -> dict[str, Any]:
+    """Read PROJECT_STATE.yaml, or return the initial state if it does not exist."""
     state_path = path or (ROOT / "PROJECT_STATE.yaml")
     if not state_path.exists():
         return {
@@ -208,4 +221,5 @@ def update_project_state(
 
 
 def exit_code(passed: bool) -> int:
+    """Map a pass/fail flag to a process exit code."""
     return 0 if passed else 1

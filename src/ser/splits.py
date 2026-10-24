@@ -42,8 +42,8 @@ def random_split(
     val_frac: float = VAL_FRAC,
 ) -> SplitBundle:
     """Protocol A: sample-level stratified 70 / 10 / 20 split by emotion label."""
-    if not np.isclose(train_frac + val_frac + (1.0 - train_frac - val_frac), 1.0):
-        raise ValueError("train_frac + val_frac must be < 1")
+    if not 0.0 < train_frac + val_frac < 1.0:
+        raise ValueError("train_frac + val_frac must be in (0, 1)")
     train_df, temp_df = train_test_split(
         df,
         test_size=1.0 - train_frac,
@@ -246,14 +246,14 @@ def iter_split_bundles(
     built = build_splits(df, protocol=protocol, seed=seed)
     for item in built:
         if isinstance(item, tuple):
-            held_out, bundle = item
+            _, bundle = item
             yield bundle.name, bundle
-            _ = held_out
         else:
             yield item.name, item
 
 
 def speaker_sets(bundle: SplitBundle) -> tuple[set[str], set[str], set[str]]:
+    """Return the train / val / test speaker sets of a bundle."""
     return (
         set(bundle.train["speaker"].unique()),
         set(bundle.val["speaker"].unique()),
@@ -262,6 +262,7 @@ def speaker_sets(bundle: SplitBundle) -> tuple[set[str], set[str], set[str]]:
 
 
 def path_column(df: pd.DataFrame) -> str:
+    """Return the audio path column name: ``filepath``, or the legacy ``path``."""
     if "filepath" in df.columns:
         return "filepath"
     if "path" in df.columns:

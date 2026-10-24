@@ -14,15 +14,12 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
-from .data import SERDataset
+from .data import SERDataset, seed_augmentation_worker
 from .metrics import classification_metrics
 from .models import build_model, uses_augmentation
-from .utils import amp_device_type, ensure_dirs, save_json, save_yaml
+from .utils import amp_device_type, ensure_dirs, save_json, save_yaml, seed_everything
 
 LOGGER = logging.getLogger(__name__)
-
-# Backward-compatible alias for older imports.
-FeatureDataset = SERDataset
 
 
 def feature_stats(df: pd.DataFrame) -> tuple[float, float]:
@@ -160,10 +157,8 @@ class Trainer:
         scheduler: torch.optim.lr_scheduler.LRScheduler | torch.optim.lr_scheduler.ReduceLROnPlateau | None = None,
         grad_clip_norm: float = 5.0,
         patience: int = 8,
-        monitor_metric: str = "val_uar",
         mixed_precision: bool = True,
         run_dir: Path,
-        checkpoint_path: Path,
         tensorboard: bool = True,
         tensorboard_dir: Path | None = None,
         label_names: list[str] | None = None,
@@ -175,12 +170,11 @@ class Trainer:
         self.scheduler = scheduler
         self.device = device
         self.grad_clip_norm = float(grad_clip_norm)
-        self.monitor_metric = monitor_metric
         self.label_names = label_names or []
         self.metadata = metadata or {}
         self.run_dir = Path(run_dir)
-        self.checkpoint_path = Path(checkpoint_path)
-        ensure_dirs(self.run_dir, self.checkpoint_path.parent)
+        self.checkpoint_path = self.run_dir / "best_model.pt"
+        ensure_dirs(self.run_dir)
 
         self.early_stopping = EarlyStopping(patience=int(patience), mode="max")
         self.history: list[dict[str, float | int]] = []
@@ -264,8 +258,6 @@ class Trainer:
         if extra:
             payload.update(extra)
         torch.save(payload, self.checkpoint_path)
-        # Also keep a copy inside the run folder for AGENTS-style layout.
-        torch.save(payload, self.run_dir / "best_model.pt")
 
     def _log_tensorboard(self, row: dict[str, float | int], train_m: dict, val_m: dict) -> None:
         if self.writer is None:
@@ -380,7 +372,12 @@ def train_and_evaluate(
     device: torch.device,
     max_epochs_override: int | None = None,
 ) -> dict:
-    """High-level training entry used by experiment runners (CLI-compatible)."""
+    """High-level training entry used by experiment runners (CLI-compatible).
+
+    Seeds everything at the start, so a run's result does not depend on which
+    runs came before it in the same process.
+    """
+    seed_everything(seed)
     num_classes = len(labels)
     train_cfg = cfg["train"]
     mean, std = feature_stats(train_df)
@@ -412,7 +409,14 @@ def train_and_evaluate(
 
     batch_size = int(train_cfg["batch_size"])
     num_workers = int(train_cfg.get("num_workers", 0))
-    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+    train_loader = DataLoader(
+        train_ds,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=num_workers,
+        generator=torch.Generator().manual_seed(seed),
+        worker_init_fn=seed_augmentation_worker,
+    )
     val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=num_workers)
     test_loader = DataLoader(test_ds, batch_size=batch_size, shuffle=False, num_workers=num_workers)
 
@@ -428,11 +432,9 @@ def train_and_evaluate(
     scheduler = build_scheduler(optimizer, train_cfg, max_epochs=max_epochs)
 
     outputs_dir = Path(cfg["paths"].get("outputs_dir", cfg["paths"]["results_dir"]))
-    ckpt_dir = Path(cfg["paths"]["checkpoints_dir"])
-    results_dir = Path(cfg["paths"]["results_dir"])
     tb_root = Path(cfg["paths"].get("tensorboard_dir", outputs_dir / "tensorboard"))
     run_dir = outputs_dir / run_id
-    ensure_dirs(outputs_dir, ckpt_dir, results_dir, tb_root, run_dir)
+    ensure_dirs(outputs_dir, tb_root, run_dir)
 
     save_yaml(cfg, run_dir / "config.yaml")
 
@@ -444,10 +446,8 @@ def train_and_evaluate(
         scheduler=scheduler,
         grad_clip_norm=float(train_cfg.get("grad_clip_norm", 5.0)),
         patience=int(train_cfg.get("patience", 8)),
-        monitor_metric=str(train_cfg.get("monitor_metric", "val_uar")),
         mixed_precision=bool(train_cfg.get("mixed_precision", True)),
         run_dir=run_dir,
-        checkpoint_path=ckpt_dir / f"{run_id}.pt",
         tensorboard=bool(train_cfg.get("tensorboard", True)),
         tensorboard_dir=tb_root / run_id,
         label_names=labels,
@@ -497,10 +497,8 @@ def train_and_evaluate(
         "mixed_precision": bool(train_cfg.get("mixed_precision", True)) and amp_device_type(device) is not None,
         "history_epochs": len(history),
     }
-    save_json(artifact, results_dir / f"{run_id}.json")
-    save_json(history, results_dir / f"{run_id}_history.json")
+    # history.csv / history.json were written by Trainer.fit.
     save_json(artifact, run_dir / "metrics.json")
-    save_json(history, run_dir / "history.json")
 
     # Human-readable report.
     report_lines = [

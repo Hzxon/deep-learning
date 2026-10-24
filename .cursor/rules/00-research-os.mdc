@@ -32,7 +32,7 @@ Automatically execute:
 3. Explain implementation plan.
 4. Apply code changes.
 5. Run Validation Gate (`python scripts/workflow.py ci-local` for major changes).
-6. Update `IMPLEMENTATION_AUDIT.md`.
+6. Summarise files changed and gate results in the PR description and `CHANGELOG.md`.
 
 ### Category B — Dataset Change
 
