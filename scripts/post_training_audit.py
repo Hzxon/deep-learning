@@ -11,7 +11,6 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -19,26 +18,15 @@ sys.path.insert(0, str(ROOT / "src"))
 from ser.audit import (  # noqa: E402
     CheckResult,
     GateResult,
+    discover_runs,
     exit_code,
+    from_root,
+    load_config,
     render_gate_report,
     save_json,
     save_markdown,
     update_project_state,
 )
-
-
-def _discover_runs(outputs_dir: Path) -> list[Path]:
-    if not outputs_dir.exists():
-        return []
-    runs: list[Path] = []
-    for child in sorted(outputs_dir.iterdir()):
-        if not child.is_dir() or not (child / "history.csv").exists():
-            continue
-        # Skip synthetic/demo stubs that are not full experiment outputs.
-        if child.name.startswith("demo_"):
-            continue
-        runs.append(child)
-    return runs
 
 
 def audit_run(run_dir: Path) -> dict[str, Any]:
@@ -107,7 +95,7 @@ def audit_run(run_dir: Path) -> dict[str, Any]:
         notes.append("best_model.pt missing")
 
     # Incomplete stubs (history only) are warned, not hard failures.
-    severe = flags["exploding_gradients"] or history.empty or (is_complete and not ckpt.exists())
+    severe = flags["exploding_gradients"] or (is_complete and not ckpt.exists())
     return {
         "run_id": run_dir.name,
         "flags": flags,
@@ -124,12 +112,12 @@ def main() -> None:
     parser.add_argument("--config", default="config/config.yaml")
     parser.add_argument("--run-dir", default=None, help="Optional single run directory.")
     parser.add_argument("--report", default="POST_TRAINING_AUDIT.md")
-    parser.add_argument("--json", default="training_health.json")
+    parser.add_argument("--json", default="artifacts/reports/training_health.json")
     args = parser.parse_args()
 
-    cfg = yaml.safe_load((ROOT / args.config).read_text(encoding="utf-8"))
+    cfg = load_config(args.config)
     outputs_dir = ROOT / cfg["paths"]["outputs_dir"]
-    run_dirs = [Path(args.run_dir)] if args.run_dir else _discover_runs(outputs_dir)
+    run_dirs = [from_root(args.run_dir)] if args.run_dir else discover_runs(outputs_dir)
 
     audits = [audit_run(p) for p in run_dirs]
     if not audits:
@@ -164,8 +152,7 @@ def main() -> None:
             recommendations = ["All audited runs look healthy."]
 
     health = {"runs": audits, "overall_passed": gate.passed}
-    save_json(health, ROOT / args.json)
-    save_json(health, ROOT / "artifacts" / "reports" / "training_health.json")
+    save_json(health, args.json)
 
     extra = [
         (

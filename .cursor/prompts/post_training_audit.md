@@ -17,7 +17,7 @@ python scripts/workflow.py post-training
 
 3. Inspect:
    - `POST_TRAINING_AUDIT.md`
-   - `training_health.json`
+   - `artifacts/reports/training_health.json`
    - annotated training-curve PNGs
 4. Detect and report:
    - overfitting (train ≫ val)

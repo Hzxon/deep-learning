@@ -35,7 +35,6 @@ train:
   optimizer: adamw
   use_class_weights: true
   mixed_precision: false
-  monitor_metric: val_uar
   tensorboard: false
   scheduler:
     name: none
@@ -51,7 +50,6 @@ augmentation:
   pitch_shift_max: 0
   time_stretch_p: 0.0
   time_stretch_range: [1.0, 1.0]
-  spec_augment_p: 0.0
   time_mask_p: 0.0
   time_mask_max: 0
   freq_mask_p: 0.0
@@ -77,7 +75,6 @@ paths:
   features_dir: ".ci_fixtures/features"
   splits_dir: ".ci_fixtures/splits"
   results_dir: ".ci_fixtures/results"
-  checkpoints_dir: ".ci_fixtures/checkpoints"
   plots_dir: ".ci_fixtures/plots"
   reports_dir: ".ci_fixtures/reports"
   outputs_dir: ".ci_fixtures/runs"

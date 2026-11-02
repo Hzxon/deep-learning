@@ -19,6 +19,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from ser.analysis import RESULT_COLUMNS, normalize_results_frame
 from ser.features import FEATURE_SHAPE
 from ser.models import EXPECTED_INPUT_HW
+from ser.splits import path_column  # noqa: E402
 
 REQUIRED_FILES = [
     "docs/SER_PROJECT_SPEC.md",
@@ -41,12 +42,10 @@ REQUIRED_FILES = [
     "scripts/preprocess.py",
     "scripts/make_splits.py",
     "scripts/prepare_ci_fixtures.py",
-    "scripts/validate_pipeline.py",
     "scripts/validate_dataset.py",
     "scripts/validate_features.py",
     "scripts/validate_splits.py",
     "scripts/reproducibility_check.py",
-    "scripts/pre_training_audit.py",
     "scripts/post_training_audit.py",
     "scripts/audit_training.py",
     "scripts/inspect_manifest.py",
@@ -128,7 +127,7 @@ def check_manifest_and_features(cfg: dict, *, require_present: bool) -> None:
         return
 
     df = pd.read_csv(manifest_path)
-    path_col = "filepath" if "filepath" in df.columns else "path"
+    path_col = path_column(df)
     required_cols = {path_col, "dataset", "speaker", "emotion", "label", "feature_path"}
     missing = required_cols - set(df.columns)
     if missing:

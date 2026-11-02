@@ -285,7 +285,7 @@ python scripts/inspect_manifest.py --config config/config.yaml
 python scripts/validate_dataset.py --config config/config.yaml
 ```
 
-**Expected.** `DATASET VALIDATION PASSED` · `VALIDATION_REPORT.md` · `artifacts/reports/validation_dataset.json`
+**Expected.** `DATASET VALIDATION PASSED` · `artifacts/reports/VALIDATION_REPORT.md` · `artifacts/reports/validation_dataset.json`
 
 **Troubleshooting.** See `[VALIDATION_PROTOCOL.md](VALIDATION_PROTOCOL.md)` Gate 1.
 
@@ -445,7 +445,7 @@ python scripts/run_experiments.py --config config/config.yaml --protocol all --m
 python scripts/workflow.py post-training
 ```
 
-**Expected.** `POST_TRAINING_AUDIT.md`, `training_health.json`, annotated curves under `artifacts/plots/`.
+**Expected.** `POST_TRAINING_AUDIT.md`, `artifacts/reports/training_health.json`, annotated curves under `artifacts/plots/`.
 
 ---
 

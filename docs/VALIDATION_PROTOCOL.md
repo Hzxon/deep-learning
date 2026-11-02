@@ -62,7 +62,7 @@ python scripts/validate_dataset.py --config config/config.yaml
 DATASET VALIDATION PASSED
 ```
 
-Writes `VALIDATION_REPORT.md` and `artifacts/reports/validation_dataset.json`.
+Writes `artifacts/reports/VALIDATION_REPORT.md` and `artifacts/reports/validation_dataset.json`.
 
 ### Failure condition
 
@@ -331,7 +331,7 @@ After training:
 
 - [ ] `python scripts/workflow.py post-training` PASS
 - [ ] `POST_TRAINING_AUDIT.md` generated
-- [ ] `training_health.json` generated
+- [ ] `artifacts/reports/training_health.json` generated
 - [ ] Training curves annotated
 
 ---

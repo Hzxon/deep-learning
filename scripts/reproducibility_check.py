@@ -9,12 +9,19 @@ from pathlib import Path
 
 import numpy as np
 import torch
-import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from ser.audit import CheckResult, GateResult, exit_code, render_gate_report, save_json, save_markdown  # noqa: E402
+from ser.audit import (  # noqa: E402
+    CheckResult,
+    GateResult,
+    exit_code,
+    load_config,  # noqa: E402
+    render_gate_report,
+    save_json,
+    save_markdown,
+)
 from ser.models import build_model  # noqa: E402
 from ser.utils import get_device, seed_everything  # noqa: E402
 
@@ -60,7 +67,7 @@ def main() -> None:
     parser.add_argument("--json", default="artifacts/reports/reproducibility.json")
     args = parser.parse_args()
 
-    cfg = yaml.safe_load((ROOT / args.config).read_text(encoding="utf-8"))
+    cfg = load_config(args.config)
     gate = reproducibility_check(cfg, seed=int(args.seed))
     save_markdown(
         render_gate_report(

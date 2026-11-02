@@ -49,7 +49,7 @@ Which runs:
 Generate:
 
 - `POST_TRAINING_AUDIT.md`
-- `training_health.json`
+- `artifacts/reports/training_health.json`
 - annotated training-curve PNGs
 
 Detect:

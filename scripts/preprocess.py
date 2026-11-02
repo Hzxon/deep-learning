@@ -15,6 +15,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from ser.data import attach_feature_paths
 from ser.features import FEATURE_SHAPE, preprocess_file, validate_feature_shape
+from ser.splits import path_column  # noqa: E402
 from ser.utils import ensure_dirs
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
@@ -53,7 +54,7 @@ def main() -> None:
     df = attach_feature_paths(df, ROOT / cfg["paths"]["features_dir"])
     ensure_dirs(ROOT / cfg["paths"]["features_dir"])
 
-    path_col = "filepath" if "filepath" in df.columns else "path"
+    path_col = path_column(df)
     failures: list[dict[str, str]] = []
     computed = 0
     skipped = 0

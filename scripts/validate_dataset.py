@@ -9,7 +9,6 @@ from pathlib import Path
 
 import pandas as pd
 import soundfile as sf
-import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -18,18 +17,16 @@ from ser.audit import (  # noqa: E402
     CheckResult,
     GateResult,
     exit_code,
+    load_config,  # noqa: E402
     render_gate_report,
     save_json,
     save_markdown,
 )
 from ser.data import DISCARDED_EMOTIONS, LABELS  # noqa: E402
+from ser.splits import path_column  # noqa: E402
 
 EXPECTED_DATASETS = {"CREMA-D", "RAVDESS", "TESS", "SAVEE"}
 EXPECTED_SPEAKERS = {"CREMA-D": 91, "RAVDESS": 24, "TESS": 2, "SAVEE": 4}
-
-
-def _path_col(df: pd.DataFrame) -> str:
-    return "filepath" if "filepath" in df.columns else "path"
 
 
 def validate_dataset(
@@ -41,7 +38,7 @@ def validate_dataset(
 ) -> GateResult:
     checks: list[CheckResult] = []
     labels = list(cfg.get("labels", LABELS))
-    path_col = _path_col(df)
+    path_col = path_column(df)
 
     required = {path_col, "dataset", "speaker", "emotion", "label"}
     missing = sorted(required - set(df.columns))
@@ -119,9 +116,8 @@ def validate_dataset(
             info = sf.info(str(audio_path))
             if info.frames <= 0:
                 audio_errors.append(f"empty:{audio_path.name}")
-            # Original corpora have heterogeneous native rates; preprocess resamples.
-            # Only flag unreadable / zero-length files here.
-            _ = info.samplerate
+            # Native sample rates differ per corpus and preprocess resamples, so only
+            # unreadable or zero-length files are flagged here.
         except Exception as exc:  # noqa: BLE001 — collect corruption evidence
             audio_errors.append(f"corrupt:{audio_path.name}:{exc}")
 
@@ -163,11 +159,11 @@ def main() -> None:
     parser.add_argument("--config", default="config/config.yaml")
     parser.add_argument("--allow-missing-audio", action="store_true")
     parser.add_argument("--max-audio-checks", type=int, default=200)
-    parser.add_argument("--report", default="VALIDATION_REPORT.md")
+    parser.add_argument("--report", default="artifacts/reports/VALIDATION_REPORT.md")
     parser.add_argument("--json", default="artifacts/reports/validation_dataset.json")
     args = parser.parse_args()
 
-    cfg = yaml.safe_load((ROOT / args.config).read_text(encoding="utf-8"))
+    cfg = load_config(args.config)
     manifest_path = ROOT / cfg["paths"]["processed_manifest"]
     if not manifest_path.exists():
         print(f"VALIDATION FAILED: manifest missing at {manifest_path}")
@@ -188,9 +184,6 @@ def main() -> None:
     )
     save_markdown(report, ROOT / args.report)
     save_json({"gate": gate.to_dict()}, ROOT / args.json)
-
-    # Also keep a stable path for CI artifact uploads.
-    save_json({"gate": gate.to_dict()}, ROOT / "artifacts" / "reports" / "validation_dataset.json")
 
     print(gate.message)
     for check in gate.checks:

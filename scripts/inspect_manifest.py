@@ -8,18 +8,26 @@ import sys
 from pathlib import Path
 
 import pandas as pd
-import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from ser.audit import CheckResult, GateResult, exit_code, render_gate_report, save_json, save_markdown  # noqa: E402
+from ser.audit import (  # noqa: E402
+    CheckResult,
+    GateResult,
+    exit_code,
+    load_config,  # noqa: E402
+    render_gate_report,
+    save_json,
+    save_markdown,
+)
 from ser.data import DISCARDED_EMOTIONS, LABELS  # noqa: E402
+from ser.splits import path_column  # noqa: E402
 
 
 def inspect_manifest(df: pd.DataFrame, labels: list[str]) -> GateResult:
     checks: list[CheckResult] = []
-    path_col = "filepath" if "filepath" in df.columns else "path"
+    path_col = path_column(df)
     required = {path_col, "dataset", "speaker", "emotion", "label", "feature_path"}
     missing_cols = sorted(required - set(df.columns))
     checks.append(
@@ -63,7 +71,7 @@ def main() -> None:
     parser.add_argument("--json", default="artifacts/reports/manifest_inspect.json")
     args = parser.parse_args()
 
-    cfg = yaml.safe_load((ROOT / args.config).read_text(encoding="utf-8"))
+    cfg = load_config(args.config)
     manifest_path = ROOT / cfg["paths"]["processed_manifest"]
     if not manifest_path.exists():
         print(f"MANIFEST MISSING: {manifest_path}")

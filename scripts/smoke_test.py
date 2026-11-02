@@ -1,20 +1,24 @@
+"""End-to-end smoke test: synthetic features -> speaker-independent split -> 1-epoch M0 run."""
+
 from __future__ import annotations
 
+import argparse
 import shutil
 import sys
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import torch
-import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from ser.splits import build_splits
+from ser.audit import load_config
+from ser.data import LABELS
+from ser.features import FEATURE_SHAPE
+from ser.splits import assert_no_speaker_leakage, build_splits
 from ser.train import train_and_evaluate
-from ser.utils import get_device, seed_everything
+from ser.utils import get_device
 
 
 def make_fake_manifest(root: Path) -> pd.DataFrame:
@@ -22,14 +26,13 @@ def make_fake_manifest(root: Path) -> pd.DataFrame:
     feature_dir.mkdir(parents=True, exist_ok=True)
     rows = []
     rng = np.random.default_rng(7)
-    labels = ["angry", "disgust", "fear", "happy", "neutral", "sad"]
     for ds, n_speakers in [("RAVDESS", 6), ("CREMA-D", 6), ("TESS", 2), ("SAVEE", 4)]:
         for speaker_idx in range(n_speakers):
             speaker = f"{ds}_S{speaker_idx:02d}"
-            for label_id, emotion in enumerate(labels):
+            for label_id, emotion in enumerate(LABELS):
                 for sample_idx in range(2):
                     path = (feature_dir / f"{ds}_{speaker_idx}_{label_id}_{sample_idx}.npy").resolve()
-                    x = rng.normal(0, 1, size=(64, 188)).astype(np.float32)
+                    x = rng.normal(0, 1, size=FEATURE_SHAPE).astype(np.float32)
                     x += label_id * 0.05
                     np.save(path, x)
                     rows.append({
@@ -44,23 +47,28 @@ def make_fake_manifest(root: Path) -> pd.DataFrame:
 
 
 def main() -> None:
-    seed_everything(42)
+    parser = argparse.ArgumentParser(description="Run the end-to-end smoke test.")
+    parser.add_argument("--config", default="config/config.yaml")
+    args = parser.parse_args()
+
     tmp = ROOT / ".smoke_test"
     if tmp.exists():
         shutil.rmtree(tmp)
     tmp.mkdir()
+    try:
+        _run(tmp, load_config(args.config))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def _run(tmp: Path, cfg: dict) -> None:
     df = make_fake_manifest(tmp)
-    cfg = yaml.safe_load((ROOT / "config/config.yaml").read_text())
-    cfg["paths"]["checkpoints_dir"] = str(tmp / "checkpoints")
     cfg["paths"]["results_dir"] = str(tmp / "results")
     cfg["paths"]["outputs_dir"] = str(tmp / "runs")
     cfg["paths"]["tensorboard_dir"] = str(tmp / "tensorboard")
     cfg["train"]["tensorboard"] = False
     split = build_splits(df, "speaker_independent", 42)[0]
-    assert not (set(split.train.speaker) & set(split.val.speaker))
-    assert not (set(split.train.speaker) & set(split.test.speaker))
-    assert not (set(split.val.speaker) & set(split.test.speaker))
-    assert torch.randn(1, 1, 64, 188).shape[-2:] == (64, 188)
+    assert_no_speaker_leakage(split)
 
     result = train_and_evaluate(
         cfg=cfg,
@@ -77,7 +85,6 @@ def main() -> None:
     )
     print("SMOKE TEST PASSED")
     print({k: result[k] for k in ["run_id", "test_loss", "best_epoch", "best_val_uar"]})
-    shutil.rmtree(tmp)
 
 
 if __name__ == "__main__":

@@ -25,6 +25,12 @@ workflows:
     current_stage: training
     next_stage: post_training_audit
     report: PRE_TRAINING_AUDIT.md
+    recommendations_pass:
+      - "All pre-training gates passed."
+      - "Safe to run: python scripts/run_experiments.py --config config/config.yaml ..."
+    recommendations_fail:
+      - "Do NOT start training."
+      - "Fix failing gates and re-run: python scripts/workflow.py pre-training"
     steps:
       - name: validate_dataset
         command: "python scripts/validate_dataset.py --config config/config.yaml"
@@ -47,9 +53,6 @@ workflows:
       - name: reproducibility_check
         command: "python scripts/reproducibility_check.py --config config/config.yaml --seed 42"
         gate: reproducibility
-      - name: pre_training_audit_report
-        command: "python scripts/pre_training_audit.py --config config/config.yaml --seed 42 --skip-nested"
-        gate: audit_report
 
   post-training:
     description: Health audit and curve generation after training.
@@ -90,7 +93,7 @@ workflows:
         command: "python scripts/validate_splits.py --config config/ci.yaml --seed 42"
         gate: splits
       - name: smoke_test
-        command: "python scripts/smoke_test.py"
+        command: "python scripts/smoke_test.py --config config/ci.yaml"
         gate: smoke
       - name: check_artifacts
         command: "python scripts/check_artifacts.py --config config/ci.yaml --require-manifest"

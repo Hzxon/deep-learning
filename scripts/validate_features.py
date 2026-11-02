@@ -9,12 +9,19 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from ser.audit import CheckResult, GateResult, exit_code, render_gate_report, save_json, save_markdown  # noqa: E402
+from ser.audit import (  # noqa: E402
+    CheckResult,
+    GateResult,
+    exit_code,
+    load_config,  # noqa: E402
+    render_gate_report,
+    save_json,
+    save_markdown,
+)
 from ser.features import FEATURE_SHAPE  # noqa: E402
 
 
@@ -89,7 +96,7 @@ def main() -> None:
     parser.add_argument("--json", default="artifacts/reports/validation_features.json")
     args = parser.parse_args()
 
-    cfg = yaml.safe_load((ROOT / args.config).read_text(encoding="utf-8"))
+    cfg = load_config(args.config)
     manifest_path = ROOT / cfg["paths"]["processed_manifest"]
     if not manifest_path.exists():
         print(f"VALIDATION FAILED: manifest missing at {manifest_path}")
